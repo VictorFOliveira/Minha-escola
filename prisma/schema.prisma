@@ -9,6 +9,7 @@ datasource db {
 
 enum UserRole {
   ADMIN
+  COORDINATOR
   SECRETARY
   TEACHER
   FINANCE
@@ -47,6 +48,36 @@ enum AcademicPeriodStatus {
   CLOSED
 }
 
+enum AssessmentType {
+  EXAM
+  QUIZ
+  ASSIGNMENT
+  PROJECT
+  PARTICIPATION
+  OTHER
+}
+
+enum AssessmentStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum FeedbackCategory {
+  FORMATIVE
+  ACADEMIC
+  BEHAVIOR
+  SUPPORT
+  GENERAL
+}
+
+enum FeedbackVisibility {
+  INTERNAL
+  STUDENT
+  GUARDIAN
+  BOTH
+}
+
 model School {
   id        String       @id @default(cuid())
   name      String
@@ -66,6 +97,7 @@ model School {
   subjects  Subject[]
   curricula Curriculum[]
   academicPeriods AcademicPeriod[]
+  feedbacks AcademicFeedback[]
   charges   Charge[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -88,6 +120,7 @@ model User {
   teacherId   String?  @unique
   teacher     Teacher? @relation("TeacherPortalUser", fields: [teacherId], references: [id], onDelete: SetNull)
   resetTokens PasswordResetToken[]
+  feedbacksAuthored AcademicFeedback[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -287,6 +320,7 @@ model ClassSubject {
   teacher       Teacher?   @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   weeklyClasses Int?
   scheduleSlots ClassScheduleSlot[]
+  assessments Assessment[]
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -319,6 +353,7 @@ model AcademicPeriod {
   startDate  DateTime
   endDate    DateTime
   status     AcademicPeriodStatus @default(PLANNED)
+  assessments Assessment[]
   createdAt  DateTime             @default(now())
   updatedAt  DateTime             @updatedAt
 
@@ -341,10 +376,70 @@ model Enrollment {
   previousEnrollment   Enrollment?      @relation("EnrollmentHistory", fields: [previousEnrollmentId], references: [id], onDelete: SetNull)
   nextEnrollment       Enrollment?      @relation("EnrollmentHistory")
   portalUser           User?             @relation("StudentPortalUser")
+  assessmentScores     AssessmentScore[]
+  feedbacks            AcademicFeedback[]
 
   @@unique([studentId, classId])
   @@index([classId, status])
   @@index([studentId, status])
+}
+
+model Assessment {
+  id             String           @id @default(cuid())
+  classSubjectId String
+  classSubject   ClassSubject     @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  periodId       String
+  period         AcademicPeriod   @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  title          String
+  description    String?
+  type           AssessmentType   @default(EXAM)
+  status         AssessmentStatus @default(DRAFT)
+  assessmentDate DateTime
+  dueDate        DateTime?
+  maxScore       Decimal          @default(10) @db.Decimal(6, 2)
+  weight         Decimal          @default(1) @db.Decimal(6, 2)
+  scores         AssessmentScore[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([classSubjectId, periodId, status])
+}
+
+model AssessmentScore {
+  id           String     @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  enrollmentId String
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  score        Decimal?   @db.Decimal(6, 2)
+  absent       Boolean    @default(false)
+  excused      Boolean    @default(false)
+  feedback     String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([assessmentId, enrollmentId])
+  @@index([enrollmentId])
+}
+
+model AcademicFeedback {
+  id           String             @id @default(cuid())
+  schoolId     String
+  school       School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  enrollmentId String
+  enrollment   Enrollment         @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  authorUserId String
+  author       User               @relation(fields: [authorUserId], references: [id], onDelete: Restrict)
+  category     FeedbackCategory   @default(FORMATIVE)
+  visibility   FeedbackVisibility @default(BOTH)
+  title        String
+  content      String
+  publishedAt  DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([schoolId, enrollmentId, visibility])
+  @@index([authorUserId])
 }
 
 model Attendance {
