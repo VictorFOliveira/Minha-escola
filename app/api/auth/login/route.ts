@@ -9,6 +9,8 @@ import {
   clearRateLimit,
   requestFingerprint,
 } from "@/lib/rate-limit";
+import { createMfaChallenge } from "@/lib/mfa";
+import { recordUserSecurityEvent } from "@/lib/security-events";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -125,7 +127,48 @@ export async function POST(request: Request) {
   const validPassword = await bcrypt.compare(password, user.password);
 
   if (!validPassword) {
+    await recordUserSecurityEvent({
+      schoolId: user.schoolId,
+      userId: user.id,
+      eventType: "LOGIN_FAILED",
+      severity: "WARN",
+      request,
+    }).catch(() => null);
+
     return NextResponse.json({ error: "E-mail ou senha inválidos." }, { status: 401 });
+  }
+
+  await clearRateLimit("LOGIN_ACCOUNT", email);
+
+  const mfaMode =
+    user.mfaEnabled
+      ? "VERIFY"
+      : user.role === "ADMIN"
+        ? "SETUP"
+        : null;
+
+  if (mfaMode) {
+    const challengeToken = await createMfaChallenge({
+      actor: "USER",
+      actorId: user.id,
+      mode: mfaMode,
+    });
+
+    await recordUserSecurityEvent({
+      schoolId: user.schoolId,
+      userId: user.id,
+      eventType:
+        mfaMode === "SETUP"
+          ? "MFA_ENROLLMENT_REQUIRED"
+          : "MFA_CHALLENGE_REQUIRED",
+      request,
+    }).catch(() => null);
+
+    return NextResponse.json({
+      mfaRequired: true,
+      mfaMode,
+      challengeToken,
+    });
   }
 
   await Promise.all([
@@ -133,28 +176,35 @@ export async function POST(request: Request) {
       where: { id: user.id },
       data: { lastLoginAt: new Date() },
     }),
-    clearRateLimit("LOGIN_ACCOUNT", email),
+    auditUserAction({
+      schoolId: user.schoolId,
+      userId: user.id,
+      action: "LOGIN",
+      entityType: "User",
+      entityId: user.id,
+    }).catch(() => null),
+    recordUserSecurityEvent({
+      schoolId: user.schoolId,
+      userId: user.id,
+      eventType: "LOGIN_SUCCESS",
+      request,
+    }).catch(() => null),
   ]);
 
-  await auditUserAction({
-    schoolId: user.schoolId,
-    userId: user.id,
-    action: "LOGIN",
-    entityType: "User",
-    entityId: user.id,
-  }).catch(() => null);
-
-  await createSession({
-    id: user.id,
-    schoolId: user.schoolId,
-    schoolName: user.school.name,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    enrollmentId: user.enrollmentId,
-    guardianId: user.guardianId,
-    teacherId: user.teacherId,
-  });
+  await createSession(
+    {
+      id: user.id,
+      schoolId: user.schoolId,
+      schoolName: user.school.name,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      enrollmentId: user.enrollmentId,
+      guardianId: user.guardianId,
+      teacherId: user.teacherId,
+    },
+    { request, mfaVerified: true },
+  );
 
   return NextResponse.json({
     homePath:
