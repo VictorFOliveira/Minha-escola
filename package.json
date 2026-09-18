@@ -40,7 +40,7 @@
     "@types/node": "^22.18.1",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
-    "prisma": "^6.16.2",
+    "prisma": "^7.10.0",
     "typescript": "^5.9.2",
     "tsx": "^4.23.13",
     "@types/qrcode": "^1.5.6"
