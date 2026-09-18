@@ -296,8 +296,6 @@ model ClassGroup {
   capacity     Int?
   schoolYear   Int
   classSubjects ClassSubject[]
-  periodGrades PeriodGrade[]
-  subjectResults SubjectFinalResult[]
   enrollments  Enrollment[]
   attendances  Attendance[]
   grades       Grade[]
