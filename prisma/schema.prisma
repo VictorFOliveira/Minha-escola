@@ -240,6 +240,46 @@ enum AuditActorType {
   SYSTEM
 }
 
+enum FileAssetStatus {
+  PENDING
+  READY
+  DELETED
+}
+
+enum PrivacyRequestType {
+  ACCESS_EXPORT
+  CORRECTION
+  ANONYMIZATION
+  DELETION
+}
+
+enum PrivacyRequestStatus {
+  OPEN
+  IN_REVIEW
+  COMPLETED
+  REJECTED
+}
+
+enum PrivacySubjectType {
+  STUDENT
+  GUARDIAN
+  USER
+}
+
+enum ConsentKind {
+  PRIVACY_POLICY
+  TERMS_OF_USE
+  COMMUNICATION
+}
+
+enum PlatformInvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
 model School {
   id        String       @id @default(cuid())
   name      String
@@ -275,6 +315,9 @@ model School {
   schoolDocuments SchoolDocument[]
   subscription SchoolSubscription?
   auditLogs AuditLog[]
+  fileAssets FileAsset[]
+  privacySettings PrivacySettings?
+  privacyRequests DataPrivacyRequest[]
   charges   Charge[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -308,6 +351,10 @@ model User {
   communicationRecipients CommunicationRecipient[]
   documentsIssued SchoolDocument[] @relation("DocumentIssuedBy")
   auditLogs AuditLog[]
+  filesCreated FileAsset[]
+  privacyRequests DataPrivacyRequest[] @relation("PrivacyRequestedBy")
+  privacyRequestsProcessed DataPrivacyRequest[] @relation("PrivacyProcessedBy")
+  consents ConsentRecord[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -345,6 +392,7 @@ model Student {
   charges      Charge[]
   authorizationRequests AuthorizationRequest[]
   schoolDocuments SchoolDocument[]
+  privacyRequests DataPrivacyRequest[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -370,6 +418,7 @@ model Guardian {
   communicationRecipients CommunicationRecipient[]
   authorizationRequests AuthorizationRequest[]
   schoolDocuments SchoolDocument[]
+  privacyRequests DataPrivacyRequest[]
   portalUser User?        @relation("GuardianPortalUser")
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -890,12 +939,15 @@ model CommunicationAttachment {
   school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   communicationId String
   communication   Communication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  fileAssetId     String?
+  fileAsset       FileAsset?    @relation(fields: [fileAssetId], references: [id], onDelete: SetNull)
   name            String
-  url             String
+  url             String?
   mimeType        String?
   createdAt       DateTime      @default(now())
 
   @@index([schoolId, communicationId])
+  @@index([fileAssetId])
 }
 
 model CommunicationDelivery {
@@ -1026,6 +1078,9 @@ model SchoolSubscription {
   currentPeriodStart DateTime?
   currentPeriodEnd  DateTime?
   cancelAtPeriodEnd Boolean            @default(false)
+  nextBillingAt     DateTime?
+  externalCustomerId String?
+  invoices          PlatformInvoice[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -1052,6 +1107,111 @@ model AuditLog {
   @@index([userId, createdAt])
   @@index([platformAdminId, createdAt])
   @@index([entityType, entityId])
+}
+
+
+model FileAsset {
+  id              String          @id @default(cuid())
+  schoolId        String
+  school          School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  createdBy       User            @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  objectKey       String          @unique
+  originalName    String
+  mimeType        String
+  sizeBytes       Int
+  status          FileAssetStatus @default(PENDING)
+  sha256          String?
+  attachments     CommunicationAttachment[]
+  createdAt       DateTime        @default(now())
+  readyAt         DateTime?
+  deletedAt       DateTime?
+
+  @@index([schoolId, status, createdAt])
+  @@index([createdByUserId])
+}
+
+model PrivacySettings {
+  id                      String   @id @default(cuid())
+  schoolId                String   @unique
+  school                  School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  academicRetentionYears  Int      @default(10)
+  financialRetentionYears Int      @default(5)
+  auditRetentionDays      Int      @default(730)
+  allowPortalRequests     Boolean  @default(true)
+  updatedAt               DateTime @updatedAt
+  createdAt               DateTime @default(now())
+}
+
+model DataPrivacyRequest {
+  id                String               @id @default(cuid())
+  schoolId          String
+  school            School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  requestedByUserId String?
+  requestedBy       User?                @relation("PrivacyRequestedBy", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  processedByUserId String?
+  processedBy       User?                @relation("PrivacyProcessedBy", fields: [processedByUserId], references: [id], onDelete: SetNull)
+  type              PrivacyRequestType
+  status            PrivacyRequestStatus @default(OPEN)
+  subjectType       PrivacySubjectType
+  subjectId         String
+  reason            String?
+  resolution        String?
+  createdAt         DateTime             @default(now())
+  processedAt       DateTime?
+
+  @@index([schoolId, status, createdAt])
+  @@index([subjectType, subjectId])
+  @@index([requestedByUserId])
+}
+
+model ConsentRecord {
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       ConsentKind
+  version    String
+  acceptedAt DateTime    @default(now())
+  revokedAt  DateTime?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  @@unique([userId, kind, version])
+  @@index([userId, kind, revokedAt])
+}
+
+model PlatformInvoice {
+  id             String                @id @default(cuid())
+  subscriptionId String
+  subscription   SchoolSubscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  provider       PaymentProvider       @default(ASAAS)
+  externalId     String?
+  amount         Decimal               @db.Decimal(12, 2)
+  dueDate        DateTime
+  status         PlatformInvoiceStatus @default(PENDING)
+  invoiceUrl     String?
+  paidAt         DateTime?
+  periodStart    DateTime
+  periodEnd      DateTime
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@unique([provider, externalId])
+  @@unique([subscriptionId, periodStart])
+  @@index([status, dueDate])
+}
+
+model PlatformWebhookEvent {
+  id          String          @id @default(cuid())
+  provider    PaymentProvider
+  eventId     String
+  eventType   String
+  payload     Json
+  processedAt DateTime?
+  createdAt   DateTime        @default(now())
+
+  @@unique([provider, eventId])
+  @@index([provider, eventType, createdAt])
 }
 
 model BillingPlan {
