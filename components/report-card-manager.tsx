@@ -628,8 +628,9 @@ export function ReportCardManager() {
                               : numberLabel(result.attendancePercent) + "%"}
                           </td>
                           <td>
-                            {result?.status === "RECOVERY" ||
-                            result?.recoveryScore !== null ? (
+                            {result &&
+                            (result.status === "RECOVERY" ||
+                              result.recoveryScore !== null) ? (
                               <input
                                 className="recovery-input"
                                 type="number"
@@ -686,8 +687,9 @@ export function ReportCardManager() {
                             </span>
                           </td>
                           <td>
-                            {result?.status === "RECOVERY" ||
-                            result?.recoveryScore !== null ? (
+                            {result &&
+                            (result.status === "RECOVERY" ||
+                              result.recoveryScore !== null) ? (
                               <button
                                 className="inline-action"
                                 type="button"
