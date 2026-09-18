@@ -4,6 +4,8 @@ export async function GET() {
   return NextResponse.json({
     service: "minha-escola",
     status: "ok",
-    version: "0.1.0",
+    version: process.env.APP_VERSION || "1.0.0",
+    environment: process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "unknown",
+    timestamp: new Date().toISOString(),
   });
 }
