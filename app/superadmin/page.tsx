@@ -12,6 +12,9 @@ export default async function SuperadminPage() {
           <h1>Superadmin</h1>
         </div>
         <div className="superadmin-user">
+          <a className="button button--secondary button--small" href="/superadmin/seguranca">
+            Segurança
+          </a>
           <span>{session.name}</span>
           <form action="/api/platform/auth/logout" method="post">
             <button className="button button--secondary button--small">
