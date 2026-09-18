@@ -155,7 +155,7 @@ export async function resolveCommunicationRecipients(input: {
   targetClassId?: string | null;
   targetEnrollmentId?: string | null;
   targetGuardianId?: string | null;
-}) {
+}): Promise<ResolvedRecipient[]> {
   const {
     session,
     audience,
@@ -330,10 +330,11 @@ export async function resolveCommunicationRecipients(input: {
 
     if (audience === "STUDENTS") return dedupe(students);
 
-    const guardians = await resolveCommunicationRecipients({
-      session,
-      audience: "GUARDIANS",
-    });
+    const guardians: ResolvedRecipient[] =
+      await resolveCommunicationRecipients({
+        session,
+        audience: "GUARDIANS",
+      });
 
     return dedupe([...students, ...guardians]);
   }
