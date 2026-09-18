@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendTransactionalEmail } from "@/lib/email";
+import { checkRateLimit, requestFingerprint } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -9,6 +10,38 @@ export async function POST(request: Request) {
 
   if (!email) {
     return NextResponse.json({ error: "Informe seu e-mail." }, { status: 400 });
+  }
+
+  const fingerprint = requestFingerprint(request);
+  const [ipThrottle, accountThrottle] = await Promise.all([
+    checkRateLimit({
+      action: "RESET_IP",
+      key: fingerprint,
+      limit: 20,
+      windowMs: 60 * 60 * 1000,
+      blockMs: 60 * 60 * 1000,
+    }),
+    checkRateLimit({
+      action: "RESET_ACCOUNT",
+      key: email,
+      limit: 5,
+      windowMs: 60 * 60 * 1000,
+      blockMs: 60 * 60 * 1000,
+    }),
+  ]);
+
+  if (!ipThrottle.allowed || !accountThrottle.allowed) {
+    const retryAfter = Math.max(
+      ipThrottle.retryAfterSeconds,
+      accountThrottle.retryAfterSeconds,
+    );
+    return NextResponse.json(
+      { error: "Muitas solicitações. Tente novamente mais tarde." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfter) },
+      },
+    );
   }
 
   const user = await prisma.user.findUnique({
