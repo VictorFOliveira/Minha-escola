@@ -1025,9 +1025,9 @@ async function main() {
 
     console.log("HTTP end-to-end regression: OK");
   } finally {
-    await prisma.school.deleteMany({
-      where: { id: { in: [schoolA.id, schoolB.id] } },
-    }).catch(() => null);
+    // O banco do workflow é descartável. Não tentamos apagar o tenant inteiro
+    // aqui porque entidades auditáveis (aulas, documentos, comunicações etc.)
+    // possuem relações RESTRICT por desenho e gerariam ruído falso no log.
     await prisma.$disconnect();
   }
 }
