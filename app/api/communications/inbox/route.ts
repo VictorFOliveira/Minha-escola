@@ -76,7 +76,15 @@ export async function GET() {
           select: {
             id: true,
             title: true,
+            content: true,
             expiresAt: true,
+            attachments: {
+              select: {
+                id: true,
+                name: true,
+                url: true,
+              },
+            },
           },
         },
       },
