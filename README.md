@@ -81,7 +81,12 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - /reset-password — definição de nova senha
 - /dashboard — painel autenticado
 - /dashboard/alunos
+- /dashboard/responsaveis
+- /dashboard/professores
+- /dashboard/funcionarios
+- /dashboard/matriculas
 - /dashboard/turmas
+- /dashboard/escola
 - /dashboard/frequencia
 - /dashboard/financeiro
 - /dashboard/usuarios — somente ADMIN
@@ -94,10 +99,29 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - /api/students — ADMIN e SECRETARY
 - /api/health
 
+### Fase 3 — Cadastros reais ✅
+- escola e dados institucionais;
+- alunos;
+- responsáveis;
+- vínculo responsável x aluno;
+- professores;
+- funcionários;
+- dashboard usando dados reais do PostgreSQL.
+
+### Fase 4 — Matrículas e rematrículas ✅
+- turmas persistidas no banco;
+- ano letivo, turno, sala, professor e capacidade;
+- matrícula ativa ou pendente;
+- proteção contra duas matrículas ativas no mesmo ano;
+- controle de vagas considerando apenas matrículas ativas/pendentes;
+- alteração de status para ativa, pendente, transferida ou cancelada;
+- rematrícula para ano posterior;
+- vínculo entre matrícula anterior e rematrícula;
+- preservação do histórico acadêmico;
+- filtro de matrículas por ano e busca por aluno/turma.
+
 ## Próximas fases
 
-3. Cadastros principais reais: escola, alunos, responsáveis, professores e funcionários.
-4. Matrículas e rematrículas.
 5. Estrutura acadêmica: disciplinas, grade curricular e períodos.
 6. Frequência e diário do professor.
 7. Notas, avaliações e boletins.
