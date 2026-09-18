@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
+import { calculatePeriodAverage } from "@/lib/grade-calculations";
 
 const weekdays: Record<number, string> = {
   1: "Segunda",
@@ -225,16 +226,19 @@ export default async function StudentPortalPage() {
         : a.weekday - b.weekday,
     );
 
-  const performanceMap = new Map<
+  const performanceGroups = new Map<
     string,
     {
       subject: string;
       period: string;
       periodOrder: number;
-      weightedTotal: number;
-      weightTotal: number;
-      released: number;
-      total: number;
+      assessments: Array<{
+        maxScore: number;
+        weight: number;
+        score: number | null;
+        absent: boolean;
+        excused: boolean;
+      }>;
     }
   >();
 
@@ -242,44 +246,42 @@ export default async function StudentPortalPage() {
     const key =
       assessment.classSubject.subject.id + "::" + assessment.period.id;
 
-    if (!performanceMap.has(key)) {
-      performanceMap.set(key, {
+    if (!performanceGroups.has(key)) {
+      performanceGroups.set(key, {
         subject: assessment.classSubject.subject.name,
         period: assessment.period.name,
         periodOrder: assessment.period.order,
-        weightedTotal: 0,
-        weightTotal: 0,
-        released: 0,
-        total: 0,
+        assessments: [],
       });
     }
 
-    const row = performanceMap.get(key)!;
-    row.total += 1;
-
     const score = assessment.scores[0];
 
-    if (score && score.score !== null && !score.absent) {
-      const numericScore = Number(score.score);
-      const maxScore = Number(assessment.maxScore);
-      const weight = Number(assessment.weight);
-
-      if (maxScore > 0 && weight > 0) {
-        row.weightedTotal += (numericScore / maxScore) * 10 * weight;
-        row.weightTotal += weight;
-        row.released += 1;
-      }
-    }
+    performanceGroups.get(key)!.assessments.push({
+      maxScore: Number(assessment.maxScore),
+      weight: Number(assessment.weight),
+      score:
+        score?.score === null || score?.score === undefined
+          ? null
+          : Number(score.score),
+      absent: Boolean(score?.absent),
+      excused: Boolean(score?.excused),
+    });
   }
 
-  const performance = Array.from(performanceMap.values())
-    .map((row) => ({
-      ...row,
-      average:
-        row.weightTotal > 0
-          ? Math.round((row.weightedTotal / row.weightTotal) * 100) / 100
-          : null,
-    }))
+  const performance = Array.from(performanceGroups.values())
+    .map((row) => {
+      const calculated = calculatePeriodAverage(row.assessments);
+
+      return {
+        subject: row.subject,
+        period: row.period,
+        periodOrder: row.periodOrder,
+        average: calculated.average,
+        released: calculated.considered,
+        total: row.assessments.length,
+      };
+    })
     .sort(
       (a, b) =>
         a.periodOrder - b.periodOrder ||
