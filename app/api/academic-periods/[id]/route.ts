@@ -44,6 +44,14 @@ export async function PATCH(request: Request, context: Context) {
   if (body?.startDate !== undefined) data.startDate = new Date(body.startDate);
   if (body?.endDate !== undefined) data.endDate = new Date(body.endDate);
 
+  if (body?.weight !== undefined) {
+    const weight = Number(body.weight);
+    if (!(weight > 0)) {
+      return NextResponse.json({ error: "Peso do período inválido." }, { status: 400 });
+    }
+    data.weight = weight;
+  }
+
   if (["PLANNED", "ACTIVE", "CLOSED"].includes(body?.status)) {
     data.status = body.status;
   }
