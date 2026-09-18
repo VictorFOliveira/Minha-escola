@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { APP_ROLES, isAppRole } from "@/lib/permissions";
 import { getSession } from "@/lib/session";
 import { assertUserLimit } from "@/lib/tenant-limits";
+import { auditUserAction } from "@/lib/audit";
 
 async function requireAdminApi() {
   const session = await getSession();
@@ -163,6 +164,15 @@ export async function POST(request: Request) {
       createdAt: true,
     },
   });
+
+  await auditUserAction({
+    schoolId: auth.session.schoolId,
+    userId: auth.session.id,
+    action: "USER_CREATE",
+    entityType: "User",
+    entityId: user.id,
+    metadata: { role: user.role, email: user.email },
+  }).catch(() => null);
 
   return NextResponse.json({ user }, { status: 201 });
 }
