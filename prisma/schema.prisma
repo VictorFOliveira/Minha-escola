@@ -136,6 +136,7 @@ model User {
   resetTokens PasswordResetToken[]
   feedbacksAuthored AcademicFeedback[]
   lessonsCreated Lesson[]
+  attendanceRecords LessonAttendance[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -438,6 +439,7 @@ model AssessmentScore {
 
   @@unique([assessmentId, enrollmentId])
   @@index([enrollmentId])
+  @@index([recordedByUserId])
 }
 
 model AcademicFeedback {
@@ -491,6 +493,8 @@ model LessonAttendance {
   lesson       Lesson                 @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   enrollmentId String
   enrollment   Enrollment             @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  recordedByUserId String
+  recordedBy   User                   @relation(fields: [recordedByUserId], references: [id], onDelete: Restrict)
   status       LessonAttendanceStatus @default(PRESENT)
   note         String?
   createdAt    DateTime               @default(now())
