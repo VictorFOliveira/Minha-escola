@@ -59,18 +59,18 @@ O `main` contém:
 - `prisma/migrations/migration_lock.toml`;
 - migration baseline versionada.
 
-## Pendências encontradas na revisão final
+## Revisão funcional final
 
-A validação técnica acima permanece válida, mas a revisão funcional do `main` encontrou dois pontos de produto que devem ser fechados antes de declarar go-live:
+Em 18/09/2026, a última pendência funcional conhecida do dashboard foi fechada:
 
-- `app/dashboard/page.tsx` ainda usa `@/lib/mock-data` para métricas, alunos recentes, atividade e resumo semanal;
-- o bloco GUARDIAN de `/dashboard` ainda contém texto legado dizendo que o portal será conectado, embora `/portal/responsavel` já exista.
+- métricas da home passaram a consultar PostgreSQL por tenant;
+- aluno ativo, turmas, frequência e financeiro deixaram de usar valores sintéticos;
+- professor recebe somente dados das turmas/disciplinas vinculadas;
+- alunos e responsáveis são redirecionados aos portais próprios;
+- `lib/mock-data.ts` foi removido;
+- landing page foi alinhada ao estado atual das 11 fases.
 
-Esses itens não quebram build, migrations ou regressão de API, mas afetam a experiência e a veracidade dos dados exibidos na home autenticada.
-
-Status correto: **release candidate pronto para homologação**, com go-live condicionado ao fechamento desses pontos e à validação da infraestrutura real.
-
-Detalhes: `docs/KNOWN_GAPS.md`.
+Com isso, não há bloqueador funcional conhecido no código para iniciar a homologação final.
 
 ## Dependências externas ainda necessárias para um go-live real
 
