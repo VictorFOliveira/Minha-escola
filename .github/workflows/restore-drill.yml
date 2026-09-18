@@ -1,0 +1,108 @@
+name: Backup restore drill
+
+on:
+  schedule:
+    - cron: "23 7 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  restore-drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: minha_escola
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d minha_escola"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/minha_escola?schema=public
+      RESTORE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/minha_escola_restore?schema=public
+      PGPASSWORD: postgres
+      BACKUP_DIR: /tmp/minha-escola-backups
+      BACKUP_RETENTION_DAYS: "14"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Apply migrations
+        run: npm run db:migrate:deploy
+
+      - name: Seed restore marker
+        run: |
+          node --input-type=module <<'NODE'
+          import { PrismaClient } from "@prisma/client";
+          const prisma = new PrismaClient();
+          await prisma.school.create({
+            data: {
+              name: "Restore Drill",
+              slug: "restore-drill",
+              lifecycleStatus: "ACTIVE",
+            },
+          });
+          await prisma.$disconnect();
+          NODE
+
+      - name: Create backup
+        run: bash scripts/backup-postgres.sh
+
+      - name: Create empty restore database
+        run: createdb -h 127.0.0.1 -U postgres minha_escola_restore
+
+      - name: Restore backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          BACKUP_FILE="$(find "$BACKUP_DIR" -type f -name 'minha-escola-*.dump' | head -n 1)"
+          test -n "$BACKUP_FILE"
+          DATABASE_URL="$RESTORE_DATABASE_URL" \
+            ALLOW_DATABASE_RESTORE=YES_I_KNOW \
+            bash scripts/restore-postgres.sh "$BACKUP_FILE"
+
+      - name: Verify restored data and migrations
+        run: |
+          DATABASE_URL="$RESTORE_DATABASE_URL" node --input-type=module <<'NODE'
+          import { PrismaClient } from "@prisma/client";
+          const prisma = new PrismaClient();
+          const marker = await prisma.school.findUnique({
+            where: { slug: "restore-drill" },
+          });
+          if (!marker) throw new Error("Restore marker ausente.");
+          const migrations = await prisma.$queryRaw`
+            SELECT COUNT(*)::int AS count FROM "_prisma_migrations"
+          `;
+          if (!migrations[0]?.count) throw new Error("Historico de migrations ausente.");
+          console.log("Restore drill: OK");
+          await prisma.$disconnect();
+          NODE
