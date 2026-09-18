@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { jwtVerify, SignJWT } from "jose";
-import type { AppRole } from "@/lib/permissions";
+import { isAppRole, type AppRole } from "@/lib/permissions";
+import { prisma } from "@/lib/prisma";
 
 export const SESSION_COOKIE = "minha_escola_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 8;
@@ -77,26 +78,27 @@ export async function getSession(): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
 
-    if (
-      typeof payload.sub !== "string" ||
-      typeof payload.id !== "string" ||
-      typeof payload.schoolId !== "string" ||
-      typeof payload.schoolName !== "string" ||
-      typeof payload.name !== "string" ||
-      typeof payload.email !== "string" ||
-      typeof payload.role !== "string"
-    ) {
+    if (typeof payload.sub !== "string") {
+      return null;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      include: { school: true },
+    });
+
+    if (!user || !user.active || !isAppRole(user.role)) {
       return null;
     }
 
     return {
-      sub: payload.sub,
-      id: payload.id,
-      schoolId: payload.schoolId,
-      schoolName: payload.schoolName,
-      name: payload.name,
-      email: payload.email,
-      role: payload.role as AppRole,
+      sub: user.id,
+      id: user.id,
+      schoolId: user.schoolId,
+      schoolName: user.school.name,
+      name: user.name,
+      email: user.email,
+      role: user.role,
     };
   } catch {
     return null;
