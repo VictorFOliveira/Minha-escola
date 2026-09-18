@@ -32,128 +32,144 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Evento inválido." }, { status: 400 });
   }
 
-  const existing = await prisma.paymentWebhookEvent.findUnique({
-    where: {
-      provider_eventId: {
-        provider: "ASAAS",
-        eventId,
+  const response = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`
+      SELECT pg_advisory_xact_lock(
+        hashtextextended(${"asaas-event:" + eventId}, 0)
+      )
+    `;
+
+    const eventRecord = await tx.paymentWebhookEvent.upsert({
+      where: {
+        provider_eventId: {
+          provider: "ASAAS",
+          eventId,
+        },
       },
-    },
-  });
-
-  if (existing?.processedAt) {
-    return NextResponse.json({ ok: true, duplicate: true });
-  }
-
-  const eventRecord =
-    existing ||
-    (await prisma.paymentWebhookEvent.create({
-      data: {
+      update: {},
+      create: {
         provider: "ASAAS",
         eventId,
         eventType,
         payload: payload as any,
       },
-    }));
-
-  if (!paymentId) {
-    await prisma.paymentWebhookEvent.update({
-      where: { id: eventRecord.id },
-      data: { processedAt: new Date() },
     });
-    return NextResponse.json({ ok: true });
-  }
 
-  const charge = await prisma.charge.findFirst({
-    where: {
-      provider: "ASAAS",
-      externalId: paymentId,
-    },
-  });
+    if (eventRecord.processedAt) {
+      return { ok: true, duplicate: true };
+    }
 
-  if (!charge) {
-    await prisma.paymentWebhookEvent.update({
-      where: { id: eventRecord.id },
-      data: { processedAt: new Date() },
-    });
-    return NextResponse.json({ ok: true, unmatched: true });
-  }
-
-  await prisma.$transaction(async (tx) => {
-    if (eventType === "PAYMENT_OVERDUE") {
-      await tx.charge.update({
-        where: { id: charge.id },
-        data: {
-          status: "OVERDUE",
-          externalStatus: payload?.payment?.status || eventType,
-        },
+    if (!paymentId) {
+      await tx.paymentWebhookEvent.update({
+        where: { id: eventRecord.id },
+        data: { processedAt: new Date() },
       });
+      return { ok: true };
+    }
+
+    // Eventos distintos (RECEIVED/CONFIRMED/REFUNDED etc.) do mesmo
+    // pagamento também precisam ser processados em sequência.
+    await tx.$queryRaw`
+      SELECT pg_advisory_xact_lock(
+        hashtextextended(${"asaas-payment:" + paymentId}, 0)
+      )
+    `;
+
+    const charge = await tx.charge.findFirst({
+      where: {
+        provider: "ASAAS",
+        externalId: paymentId,
+      },
+    });
+
+    if (!charge) {
+      await tx.paymentWebhookEvent.update({
+        where: { id: eventRecord.id },
+        data: { processedAt: new Date() },
+      });
+      return { ok: true, unmatched: true };
+    }
+
+    if (eventType === "PAYMENT_OVERDUE") {
+      // Um callback atrasado não pode rebaixar estados financeiros terminais.
+      if (!["PAID", "REFUNDED", "CANCELLED"].includes(charge.status)) {
+        await tx.charge.update({
+          where: { id: charge.id },
+          data: {
+            status: "OVERDUE",
+            externalStatus: payload?.payment?.status || eventType,
+          },
+        });
+      }
     }
 
     if (
       eventType === "PAYMENT_RECEIVED" ||
       eventType === "PAYMENT_CONFIRMED"
     ) {
-      const amount = Number(payload?.payment?.value ?? charge.amount);
-      const paidAt = payload?.payment?.paymentDate
-        ? new Date(payload.payment.paymentDate + "T12:00:00.000Z")
-        : payload?.payment?.confirmedDate
-          ? new Date(payload.payment.confirmedDate + "T12:00:00.000Z")
-          : new Date();
+      // REFUNDED/CANCELLED são terminais até um evento explícito de restauração.
+      if (!["REFUNDED", "CANCELLED"].includes(charge.status)) {
+        const amount = Number(payload?.payment?.value ?? charge.amount);
+        const paidAt = payload?.payment?.paymentDate
+          ? new Date(payload.payment.paymentDate + "T12:00:00.000Z")
+          : payload?.payment?.confirmedDate
+            ? new Date(payload.payment.confirmedDate + "T12:00:00.000Z")
+            : new Date();
 
-      const existingPayment = await tx.payment.findUnique({
-        where: {
-          provider_externalId: {
-            provider: "ASAAS",
-            externalId: paymentId,
+        const existingPayment = await tx.payment.findUnique({
+          where: {
+            provider_externalId: {
+              provider: "ASAAS",
+              externalId: paymentId,
+            },
           },
-        },
-      });
+        });
 
-      await tx.payment.upsert({
-        where: {
-          provider_externalId: {
-            provider: "ASAAS",
-            externalId: paymentId,
+        await tx.payment.upsert({
+          where: {
+            provider_externalId: {
+              provider: "ASAAS",
+              externalId: paymentId,
+            },
           },
-        },
-        update: {
-          amount,
-          status:
-            eventType === "PAYMENT_CONFIRMED" ? "CONFIRMED" : "RECEIVED",
-          paidAt,
-        },
-        create: {
-          chargeId: charge.id,
-          amount,
-          method: charge.paymentMethod || "OTHER",
-          provider: "ASAAS",
-          status:
-            eventType === "PAYMENT_CONFIRMED" ? "CONFIRMED" : "RECEIVED",
-          externalId: paymentId,
-          paidAt,
-        },
-      });
+          update: {
+            amount,
+            status:
+              eventType === "PAYMENT_CONFIRMED" ? "CONFIRMED" : "RECEIVED",
+            paidAt,
+          },
+          create: {
+            chargeId: charge.id,
+            amount,
+            method: charge.paymentMethod || "OTHER",
+            provider: "ASAAS",
+            status:
+              eventType === "PAYMENT_CONFIRMED" ? "CONFIRMED" : "RECEIVED",
+            externalId: paymentId,
+            paidAt,
+          },
+        });
 
-      const previousExternalAmount = existingPayment
-        ? Number(existingPayment.amount)
-        : 0;
-      const delta = Math.max(0, amount - previousExternalAmount);
-      const newPaidAmount = roundMoney(
-        Number(charge.paidAmount) + delta,
-      );
+        const previousExternalAmount = existingPayment
+          ? Number(existingPayment.amount)
+          : 0;
+        const delta = Math.max(0, amount - previousExternalAmount);
+        const newPaidAmount = roundMoney(
+          Number(charge.paidAmount) + delta,
+        );
 
-      await tx.charge.update({
-        where: { id: charge.id },
-        data: {
-          paidAmount: newPaidAmount,
-          paidAt:
-            newPaidAmount >= Number(charge.amount) ? paidAt : charge.paidAt,
-          status:
-            newPaidAmount >= Number(charge.amount) ? "PAID" : "PARTIAL",
-          externalStatus: payload?.payment?.status || eventType,
-        },
-      });
+        await tx.charge.update({
+          where: { id: charge.id },
+          data: {
+            paidAmount: newPaidAmount,
+            paidAt:
+              newPaidAmount >= Number(charge.amount) ? paidAt : charge.paidAt,
+            status:
+              newPaidAmount >= Number(charge.amount) ? "PAID" : "PARTIAL",
+            externalStatus: payload?.payment?.status || eventType,
+          },
+        });
+      }
     }
 
     if (eventType === "PAYMENT_REFUNDED") {
@@ -205,7 +221,9 @@ export async function POST(request: Request) {
       where: { id: eventRecord.id },
       data: { processedAt: new Date() },
     });
+
+    return { ok: true };
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json(response);
 }
