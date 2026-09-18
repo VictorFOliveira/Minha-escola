@@ -80,14 +80,42 @@ export async function getSession(): Promise<SessionPayload | null> {
 
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      include: { school: true },
+      include: {
+        school: true,
+        enrollment: {
+          include: { class: true },
+        },
+        guardian: true,
+        teacher: true,
+      },
     });
 
     if (!user || !user.active || !isAppRole(user.role)) return null;
 
-    if (user.role === "STUDENT" && !user.enrollmentId) return null;
-    if (user.role === "GUARDIAN" && !user.guardianId) return null;
-    if (user.role === "TEACHER" && !user.teacherId) return null;
+    if (
+      user.role === "STUDENT" &&
+      (
+        !user.enrollment ||
+        user.enrollment.class.schoolId !== user.schoolId ||
+        !["ACTIVE", "PENDING"].includes(user.enrollment.status)
+      )
+    ) {
+      return null;
+    }
+
+    if (
+      user.role === "GUARDIAN" &&
+      (!user.guardian || user.guardian.schoolId !== user.schoolId || user.guardian.status !== "ACTIVE")
+    ) {
+      return null;
+    }
+
+    if (
+      user.role === "TEACHER" &&
+      (!user.teacher || user.teacher.schoolId !== user.schoolId || user.teacher.status !== "ACTIVE")
+    ) {
+      return null;
+    }
 
     return {
       sub: user.id,
