@@ -966,6 +966,15 @@ async function main() {
       "perfil financeiro nunca pode ler cadastro de alunos",
     );
 
+    const expectedDashboardStudent = await prisma.student.findFirstOrThrow({
+      where: {
+        schoolId: schoolA.id,
+        status: "ACTIVE",
+      },
+      orderBy: { createdAt: "desc" },
+      select: { name: true },
+    });
+
     const dashboard = await authed(secretaryCookie, "/dashboard");
     assert.equal(dashboard.response.status, 200);
     assert.equal(
@@ -976,9 +985,9 @@ async function main() {
     );
     assert.equal(
       typeof dashboard.data === "string" &&
-        dashboard.data.includes("Aluno Regression"),
+        dashboard.data.includes(expectedDashboardStudent.name),
       true,
-      "dashboard deve renderizar aluno real do tenant",
+      "dashboard deve renderizar dados reais recentes do tenant",
     );
     assert.equal(
       typeof dashboard.data === "string" &&
