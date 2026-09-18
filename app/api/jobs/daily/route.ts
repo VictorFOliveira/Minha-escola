@@ -64,12 +64,7 @@ export async function POST(request: Request) {
       where: { expiresAt: { lt: now } },
     }),
     prisma.passwordResetToken.deleteMany({
-      where: {
-        OR: [
-          { expiresAt: { lt: now } },
-          { usedAt: { not: null } },
-        ],
-      },
+      where: { expiresAt: { lt: now } },
     }),
   ]);
 
