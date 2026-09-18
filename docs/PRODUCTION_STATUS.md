@@ -59,6 +59,19 @@ O `main` contém:
 - `prisma/migrations/migration_lock.toml`;
 - migration baseline versionada.
 
+## Pendências encontradas na revisão final
+
+A validação técnica acima permanece válida, mas a revisão funcional do `main` encontrou dois pontos de produto que devem ser fechados antes de declarar go-live:
+
+- `app/dashboard/page.tsx` ainda usa `@/lib/mock-data` para métricas, alunos recentes, atividade e resumo semanal;
+- o bloco GUARDIAN de `/dashboard` ainda contém texto legado dizendo que o portal será conectado, embora `/portal/responsavel` já exista.
+
+Esses itens não quebram build, migrations ou regressão de API, mas afetam a experiência e a veracidade dos dados exibidos na home autenticada.
+
+Status correto: **release candidate pronto para homologação**, com go-live condicionado ao fechamento desses pontos e à validação da infraestrutura real.
+
+Detalhes: `docs/KNOWN_GAPS.md`.
+
 ## Dependências externas ainda necessárias para um go-live real
 
 Esses itens não podem ser provisionados apenas pelo repositório:
