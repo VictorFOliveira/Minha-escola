@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { calculatePeriodAverage } from "@/lib/grade-calculations";
 import { CommunicationInbox } from "@/components/communication-inbox";
+import { PortalDocuments } from "@/components/portal-documents";
 
 const weekdays: Record<number, string> = {
   1: "Segunda",
@@ -316,6 +317,7 @@ export default async function StudentPortalPage() {
       </section>
 
       <CommunicationInbox title="Comunicados para você" />
+      <PortalDocuments />
 
       <section className="portal-metrics">
         <article>
