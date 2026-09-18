@@ -119,8 +119,13 @@ export async function POST(request: Request, context: Context) {
     });
   }
 
+  let createdCount = 0;
   if (createData.length) {
-    await prisma.charge.createMany({ data: createData });
+    const created = await prisma.charge.createMany({
+      data: createData,
+      skipDuplicates: true,
+    });
+    createdCount = created.count;
   }
 
   const charges = await prisma.charge.findMany({
@@ -128,12 +133,12 @@ export async function POST(request: Request, context: Context) {
     orderBy: { installmentNumber: "asc" },
   });
 
-  if (createData.length) {
+  if (createdCount > 0) {
     await notifyBillingSchedule({ session, contractId: contract.id }).catch(() => null);
   }
 
   const responseBody = {
-    created: createData.length,
+    created: createdCount,
     charges,
   };
 
