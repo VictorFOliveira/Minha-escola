@@ -15,6 +15,7 @@ import {
   storageConfigured,
 } from "@/lib/storage";
 import { processCommunicationDeliveries } from "@/lib/communication-delivery";
+import { trackJob } from "@/lib/jobs";
 
 function authorized(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -27,6 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
+  const result = await trackJob("daily-maintenance", async () => {
   const now = new Date();
   const inThreeDays = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
 
@@ -242,8 +244,7 @@ export async function POST(request: Request) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
+  return {
     expiredTrials: expiredTrials.length,
     overdueNotifications,
     dueSoonNotifications,
@@ -252,5 +253,11 @@ export async function POST(request: Request) {
     communicationDeliveries: deliveryResult,
     auditLogsDeleted,
     staleUploadsDeleted: staleUploads.length,
+  };
+  });
+
+  return NextResponse.json({
+    ok: true,
+    ...result,
   });
 }
