@@ -16,7 +16,7 @@ export async function POST(request: Request, context: Context) {
   const [source, targetClass] = await Promise.all([
     prisma.enrollment.findFirst({
       where: { id, class: { schoolId: session.schoolId } },
-      include: { student: true, class: true, nextEnrollment: true },
+      include: { student: true, class: true, nextEnrollment: true, portalUser: true },
     }),
     prisma.classGroup.findFirst({
       where: { id: targetClassId, schoolId: session.schoolId },
@@ -74,22 +74,39 @@ export async function POST(request: Request, context: Context) {
     return NextResponse.json({ error: "O aluno já possui histórico na turma de destino." }, { status: 409 });
   }
 
-  const enrollment = await prisma.enrollment.create({
-    data: {
-      studentId: source.studentId,
-      classId: targetClass.id,
-      type: "REENROLLMENT",
-      status: body?.status === "PENDING" ? "PENDING" : "ACTIVE",
-      previousEnrollmentId: source.id,
-      notes: body?.notes?.trim() || null,
-      startedAt: body?.startedAt ? new Date(body.startedAt) : new Date(),
-    },
-    include: {
-      student: true,
-      class: true,
-      previousEnrollment: { include: { class: true } },
-    },
+  const enrollment = await prisma.$transaction(async (tx) => {
+    const created = await tx.enrollment.create({
+      data: {
+        studentId: source.studentId,
+        classId: targetClass.id,
+        type: "REENROLLMENT",
+        status: body?.status === "PENDING" ? "PENDING" : "ACTIVE",
+        previousEnrollmentId: source.id,
+        notes: body?.notes?.trim() || null,
+        startedAt: body?.startedAt ? new Date(body.startedAt) : new Date(),
+      },
+      include: {
+        student: true,
+        class: true,
+        previousEnrollment: { include: { class: true } },
+      },
+    });
+
+    if (source.portalUser) {
+      await tx.user.update({
+        where: { id: source.portalUser.id },
+        data: { enrollmentId: created.id },
+      });
+    }
+
+    return created;
   });
 
-  return NextResponse.json({ enrollment }, { status: 201 });
+  return NextResponse.json(
+    {
+      enrollment,
+      portalAccountMoved: Boolean(source.portalUser),
+    },
+    { status: 201 },
+  );
 }
