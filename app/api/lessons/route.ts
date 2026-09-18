@@ -53,7 +53,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Disciplina da turma inválida ou sem acesso." }, { status: 404 });
   }
 
-  const lessonDate = body?.lessonDate ? new Date(body.lessonDate) : null;
+  const lessonDate =
+    typeof body?.lessonDate === "string" && body.lessonDate
+      ? new Date(body.lessonDate + "T12:00:00.000Z")
+      : null;
   const startTime = typeof body?.startTime === "string" ? body.startTime.trim() : "";
   const endTime = typeof body?.endTime === "string" ? body.endTime.trim() : "";
 
