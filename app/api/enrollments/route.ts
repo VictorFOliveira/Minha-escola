@@ -56,6 +56,11 @@ export async function POST(request: Request) {
   const [student, classGroup] = await Promise.all([
     prisma.student.findFirst({
       where: { id: studentId, schoolId: session.schoolId, status: "ACTIVE" },
+      include: {
+        guardians: {
+          include: { guardian: true },
+        },
+      },
     }),
     prisma.classGroup.findFirst({
       where: { id: classId, schoolId: session.schoolId },
@@ -65,6 +70,24 @@ export async function POST(request: Request) {
 
   if (!student || !classGroup) {
     return NextResponse.json({ error: "Aluno ou turma inválido." }, { status: 404 });
+  }
+
+  const activeGuardians = student.guardians.filter(
+    (link) => link.guardian.status === "ACTIVE",
+  );
+
+  if (!activeGuardians.length) {
+    return NextResponse.json(
+      { error: "Todo aluno precisa ter pelo menos um responsável ativo antes da matrícula." },
+      { status: 409 },
+    );
+  }
+
+  if (!activeGuardians.some((link) => link.financialResponsible)) {
+    return NextResponse.json(
+      { error: "Defina um responsável financeiro para o aluno antes da matrícula." },
+      { status: 409 },
+    );
   }
 
   if (classGroup.capacity && classGroup._count.enrollments >= classGroup.capacity) {
