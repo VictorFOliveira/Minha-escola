@@ -100,12 +100,32 @@ export default async function StudentPortalPage() {
         },
       },
     }),
-    prisma.attendance.findMany({
+    prisma.lessonAttendance.findMany({
       where: {
-        studentId: enrollment.studentId,
-        classId: enrollment.classId,
+        enrollmentId: enrollment.id,
+        lesson: {
+          status: "COMPLETED",
+          classSubject: {
+            classId: enrollment.classId,
+          },
+        },
       },
-      select: { present: true },
+      include: {
+        lesson: {
+          include: {
+            classSubject: {
+              include: {
+                subject: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        lesson: {
+          lessonDate: "desc",
+        },
+      },
     }),
     prisma.academicFeedback.findMany({
       where: {
@@ -126,10 +146,54 @@ export default async function StudentPortalPage() {
     }),
   ]);
 
-  const presentCount = attendance.filter((item) => item.present).length;
+  const presentCount = attendance.filter(
+    (item) => item.status === "PRESENT" || item.status === "LATE",
+  ).length;
   const attendanceRate = attendance.length
     ? Math.round((presentCount / attendance.length) * 1000) / 10
     : null;
+
+  const attendanceBySubjectMap = new Map<
+    string,
+    {
+      subject: string;
+      total: number;
+      present: number;
+      absent: number;
+      late: number;
+      excused: number;
+    }
+  >();
+
+  for (const item of attendance) {
+    const subject = item.lesson.classSubject.subject;
+    const current =
+      attendanceBySubjectMap.get(subject.id) || {
+        subject: subject.name,
+        total: 0,
+        present: 0,
+        absent: 0,
+        late: 0,
+        excused: 0,
+      };
+
+    current.total += 1;
+    if (item.status === "PRESENT") current.present += 1;
+    if (item.status === "ABSENT") current.absent += 1;
+    if (item.status === "LATE") current.late += 1;
+    if (item.status === "EXCUSED") current.excused += 1;
+
+    attendanceBySubjectMap.set(subject.id, current);
+  }
+
+  const attendanceBySubject = Array.from(attendanceBySubjectMap.values())
+    .map((item) => ({
+      ...item,
+      rate: item.total
+        ? Math.round(((item.present + item.late) / item.total) * 1000) / 10
+        : null,
+    }))
+    .sort((a, b) => a.subject.localeCompare(b.subject));
 
   const schedule = enrollment.class.classSubjects
     .flatMap((item) =>
@@ -262,6 +326,37 @@ export default async function StudentPortalPage() {
             com nota lançada
           </small>
         </article>
+      </section>
+
+      <section className="portal-panel" id="frequencia-disciplinas">
+        <div className="portal-panel-heading">
+          <div>
+            <span className="eyebrow">FREQUÊNCIA POR DISCIPLINA</span>
+            <h2>Minha presença nas aulas</h2>
+          </div>
+        </div>
+
+        {attendanceBySubject.length ? (
+          <div className="attendance-subject-grid">
+            {attendanceBySubject.map((item) => (
+              <article key={item.subject}>
+                <div>
+                  <strong>{item.subject}</strong>
+                  <span>{item.total} aula(s) contabilizada(s)</span>
+                </div>
+                <b>{item.rate === null ? "—" : item.rate + "%"}</b>
+                <small>
+                  {item.present} presente(s) • {item.late} atraso(s) •{" "}
+                  {item.absent} falta(s) • {item.excused} justificada(s)
+                </small>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="portal-empty">
+            Nenhuma chamada concluída foi publicada para sua matrícula.
+          </div>
+        )}
       </section>
 
       <section className="portal-panel" id="horarios">
