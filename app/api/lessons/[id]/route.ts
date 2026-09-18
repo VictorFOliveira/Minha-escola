@@ -59,7 +59,7 @@ export async function PATCH(request: Request, context: Context) {
   const data: Record<string, unknown> = {};
 
   if (body?.lessonDate !== undefined) {
-    const date = new Date(body.lessonDate);
+    const date = new Date(String(body.lessonDate) + "T12:00:00.000Z");
     if (Number.isNaN(date.getTime())) {
       return NextResponse.json({ error: "Data inválida." }, { status: 400 });
     }
