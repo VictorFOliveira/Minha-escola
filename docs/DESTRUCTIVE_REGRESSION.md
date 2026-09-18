@@ -69,8 +69,37 @@ Resultado:
 - rajada p99: **1.193 ms**;
 - throughput observado: ~261 req/s sustentado e ~290 req/s na rajada.
 
-## Passe final
+## Passe final — aprovado
 
-O passe final repete os 3.000 requests e acrescenta os cenários de matrícula, malware, webhooks e páginas SSR/portais incorporados depois da primeira rodada.
+Execução final: GitHub Actions `Destructive regression`, run **35397427671**, em 18/09/2026.
 
-O resultado final deve ser registrado aqui somente depois que todos os gates terminarem verdes.
+Fixture:
+
+- **5.000 alunos**;
+- **3.000 cobranças**;
+- **44 usuários concorrentes**, incluindo aluno, responsável, professor, coordenação, secretaria e financeiro;
+- dashboard SSR, Portal do Aluno e Portal do Responsável incluídos no tráfego.
+
+Carga:
+
+- sustentado: **2.000 requests**, concorrência **100**;
+- rajada: **1.000 requests**, concorrência **250**;
+- total: **3.000 requests**.
+
+Resultado final:
+
+- respostas bem-sucedidas: **3.000 / 3.000**;
+- falhas: **0**;
+- taxa de erro: **0%**;
+- sustentado: ~**217 req/s**, p50 **214 ms**, p95 **491 ms**, p99 **790 ms**;
+- rajada: ~**256 req/s**, p50 **667 ms**, p95 **1.303 ms**, p99 **2.107 ms**;
+- regressão HTTP destrutiva: **OK**;
+- readiness após abuso: **ready / database ok**;
+- migrations após abuso: **OK**;
+- varredura final do log por `prisma:error`, `P20xx`, timeout, deadlock, erro de FK e conexão: **nenhuma ocorrência**.
+
+## Interpretação
+
+O cenário extremo de 250 requisições concorrentes elevou a latência de cauda, como esperado em runner compartilhado de CI, mas não provocou erro HTTP, timeout, corrupção observável ou perda de integridade.
+
+Esse resultado passa a ser o baseline destrutivo de CI. Ele não substitui o teste final na VPS/infraestrutura contratada, onde CPU, RAM, I/O, rede e PostgreSQL serão diferentes.
