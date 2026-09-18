@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const enrollments = await prisma.enrollment.findMany({
     where: {
       classId: classSubject.classId,
-      status: { not: "CANCELLED" },
+      status: { in: ["ACTIVE", "PENDING"] },
     },
   });
 
