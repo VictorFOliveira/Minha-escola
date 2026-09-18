@@ -141,7 +141,15 @@ export async function PATCH(request: Request, context: Context) {
   const updated = await prisma.school.findUnique({
     where: { id },
     include: {
-      subscription: { include: { plan: true } },
+      subscription: {
+        include: {
+          plan: true,
+          invoices: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
+      },
       _count: {
         select: { students: true, users: true, classes: true },
       },
