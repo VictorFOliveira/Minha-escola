@@ -58,15 +58,17 @@ export function getChargeStatus(input: {
 
   const today = new Date();
   const due = new Date(input.dueDate);
-  const endToday = Date.UTC(
+  const startToday = Date.UTC(
     today.getUTCFullYear(),
     today.getUTCMonth(),
     today.getUTCDate(),
-    23,
-    59,
-    59,
+  );
+  const dueDay = Date.UTC(
+    due.getUTCFullYear(),
+    due.getUTCMonth(),
+    due.getUTCDate(),
   );
 
-  if (due.getTime() < endToday) return "OVERDUE" as const;
+  if (dueDay < startToday) return "OVERDUE" as const;
   return "PENDING" as const;
 }
