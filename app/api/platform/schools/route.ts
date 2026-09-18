@@ -14,7 +14,13 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     include: {
       subscription: {
-        include: { plan: true },
+        include: {
+          plan: true,
+          invoices: {
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
       },
       _count: {
         select: {
