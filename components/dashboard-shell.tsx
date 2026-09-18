@@ -10,10 +10,14 @@ const navItems: Array<{
 }> = [
   { href: "/dashboard", label: "Visão geral", icon: "◫", roles: ["ADMIN", "SECRETARY", "TEACHER", "FINANCE", "GUARDIAN"] },
   { href: "/dashboard/alunos", label: "Alunos", icon: "◎", roles: ["ADMIN", "SECRETARY"] },
+  { href: "/dashboard/responsaveis", label: "Responsáveis", icon: "♧", roles: ["ADMIN", "SECRETARY"] },
+  { href: "/dashboard/professores", label: "Professores", icon: "♙", roles: ["ADMIN", "SECRETARY"] },
+  { href: "/dashboard/funcionarios", label: "Funcionários", icon: "♢", roles: ["ADMIN"] },
   { href: "/dashboard/turmas", label: "Turmas", icon: "▦", roles: ["ADMIN", "SECRETARY", "TEACHER"] },
   { href: "/dashboard/frequencia", label: "Frequência", icon: "✓", roles: ["ADMIN", "SECRETARY", "TEACHER"] },
   { href: "/dashboard/financeiro", label: "Financeiro", icon: "$", roles: ["ADMIN", "FINANCE"] },
-  { href: "/dashboard/usuarios", label: "Usuários", icon: "♙", roles: ["ADMIN"] },
+  { href: "/dashboard/usuarios", label: "Usuários", icon: "⚙", roles: ["ADMIN"] },
+  { href: "/dashboard/escola", label: "Escola", icon: "⌂", roles: ["ADMIN"] },
 ];
 
 function initials(name: string) {
@@ -42,7 +46,7 @@ export function DashboardShell({
           <span className="brand-mark">ME</span>
           <span>
             <strong>Minha Escola</strong>
-            <small>Gestão escolar</small>
+            <small>SaaS de gestão escolar</small>
           </span>
         </a>
 
