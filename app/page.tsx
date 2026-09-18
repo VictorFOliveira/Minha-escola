@@ -69,7 +69,7 @@ export default function HomePage() {
         <div className="section-heading">
           <span className="eyebrow">SAAS DE GESTÃO ESCOLAR</span>
           <h2>Da secretaria ao financeiro, com uma única base de dados</h2>
-          <p>O Minha Escola está sendo construído por fases, com módulos integrados desde a arquitetura.</p>
+          <p>O Minha Escola reúne os módulos das 11 fases em uma arquitetura integrada e pronta para homologação.</p>
         </div>
         <div className="feature-grid">
           {[
