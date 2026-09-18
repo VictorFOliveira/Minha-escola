@@ -7,7 +7,7 @@ type Context = { params: Promise<{ id: string }> };
 export async function PATCH(request: Request, context: Context) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
-  if (!["ADMIN", "SECRETARY"].includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
+  if (!["ADMIN", "COORDINATOR", "SECRETARY"].includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
 
   const { id } = await context.params;
   const current = await prisma.subject.findFirst({ where: { id, schoolId: session.schoolId } });
@@ -39,7 +39,7 @@ export async function PATCH(request: Request, context: Context) {
 export async function DELETE(_: Request, context: Context) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
-  if (!["ADMIN", "SECRETARY"].includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
+  if (!["ADMIN", "COORDINATOR", "SECRETARY"].includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
 
   const { id } = await context.params;
   const subject = await prisma.subject.findFirst({
