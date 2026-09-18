@@ -87,11 +87,12 @@ export async function POST(request: Request) {
   let teacherId: string | null = null;
 
   if (role === "STUDENT") {
-    enrollmentId = typeof body?.enrollmentId === "string" ? body.enrollmentId : "";
+    const requestedEnrollmentId =
+      typeof body?.enrollmentId === "string" ? body.enrollmentId : "";
 
     const enrollment = await prisma.enrollment.findFirst({
       where: {
-        id: enrollmentId,
+        id: requestedEnrollmentId,
         status: { in: ["ACTIVE", "PENDING"] },
         class: { schoolId: auth.session.schoolId },
       },
@@ -105,13 +106,16 @@ export async function POST(request: Request) {
     if (enrollment.portalUser) {
       return NextResponse.json({ error: "Esta matrícula já possui uma conta de aluno vinculada." }, { status: 409 });
     }
+
+    enrollmentId = enrollment.id;
   }
 
   if (role === "GUARDIAN") {
-    guardianId = typeof body?.guardianId === "string" ? body.guardianId : "";
+    const requestedGuardianId =
+      typeof body?.guardianId === "string" ? body.guardianId : "";
 
     const guardian = await prisma.guardian.findFirst({
-      where: { id: guardianId, schoolId: auth.session.schoolId, status: "ACTIVE" },
+      where: { id: requestedGuardianId, schoolId: auth.session.schoolId, status: "ACTIVE" },
       include: { portalUser: true },
     });
 
@@ -122,13 +126,16 @@ export async function POST(request: Request) {
     if (guardian.portalUser) {
       return NextResponse.json({ error: "Este responsável já possui uma conta vinculada." }, { status: 409 });
     }
+
+    guardianId = guardian.id;
   }
 
   if (role === "TEACHER") {
-    teacherId = typeof body?.teacherId === "string" ? body.teacherId : "";
+    const requestedTeacherId =
+      typeof body?.teacherId === "string" ? body.teacherId : "";
 
     const teacher = await prisma.teacher.findFirst({
-      where: { id: teacherId, schoolId: auth.session.schoolId, status: "ACTIVE" },
+      where: { id: requestedTeacherId, schoolId: auth.session.schoolId, status: "ACTIVE" },
       include: { portalUser: true },
     });
 
@@ -139,6 +146,8 @@ export async function POST(request: Request) {
     if (teacher.portalUser) {
       return NextResponse.json({ error: "Este professor já possui uma conta vinculada." }, { status: 409 });
     }
+
+    teacherId = teacher.id;
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
