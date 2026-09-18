@@ -4,31 +4,31 @@
 
 A release só avança quando o commit candidato comprovar:
 
-- [ ] package-lock presente;
-- [ ] migration baseline presente;
-- [ ] Prisma schema válido;
-- [ ] `prisma migrate deploy` aplicado em PostgreSQL vazio;
-- [ ] testes unitários verdes;
-- [ ] testes de isolamento multi-tenant verdes;
-- [ ] teste de idempotência verde;
-- [ ] teste XLSX/import-export verde;
-- [ ] performance database gate verde;
-- [ ] TypeScript verde;
-- [ ] Next.js build production verde;
-- [ ] regressão HTTP verde;
-- [ ] dependency audit em nível moderate+ verde;
-- [ ] CodeQL verde;
+- [x] package-lock presente;
+- [x] migration baseline presente;
+- [x] Prisma schema válido;
+- [x] `prisma migrate deploy` aplicado em PostgreSQL vazio;
+- [x] testes unitários verdes;
+- [x] testes de isolamento multi-tenant verdes;
+- [x] teste de idempotência verde;
+- [x] teste XLSX/import-export verde;
+- [x] performance database gate verde;
+- [x] TypeScript verde;
+- [x] Next.js build production verde;
+- [x] regressão HTTP verde;
+- [x] dependency audit em nível moderate+ verde;
+- [x] CodeQL verde;
 - [ ] readiness verde.
 
 ## Gate de carga
 
 Para releases que alterem consultas, autenticação, financeiro, sessão ou banco:
 
-- [ ] cenário de 5.000 alunos executado;
-- [ ] pelo menos 400 requisições HTTP;
-- [ ] rajada concorrente executada;
-- [ ] sem 5xx/timeouts inesperados;
-- [ ] p95 comparado ao baseline documentado.
+- [x] cenário de 5.000 alunos executado;
+- [x] pelo menos 400 requisições HTTP;
+- [x] rajada concorrente executada;
+- [x] sem 5xx/timeouts inesperados;
+- [x] p95 comparado ao baseline documentado.
 
 Baseline atual: `docs/LOAD_TEST_RESULTS_600.md`.
 
@@ -62,6 +62,13 @@ Antes de importar uma escola real:
 - [ ] export de segurança gerado antes do go-live.
 
 ## Gate funcional
+
+Antes do go-live:
+
+- [ ] dashboard inicial sem dados mock;
+- [ ] fluxo GUARDIAN coerente com o Portal do Responsável já existente;
+- [ ] upload + scanner validados na infraestrutura real;
+- [ ] teste de carga repetido na VPS/plataforma final.
 
 A regressão deve cobrir:
 
