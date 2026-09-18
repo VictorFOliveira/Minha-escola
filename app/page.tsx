@@ -102,7 +102,8 @@ export default function HomePage() {
             <p><strong>Fase 4 concluída</strong><span>Turmas reais, matrículas, rematrículas, capacidade e histórico escolar.</span></p>
             <p><strong>Fase 5 concluída</strong><span>Disciplinas, períodos, grade curricular, horários, avaliações, notas e portal acadêmico do aluno.</span></p>
             <p><strong>Fase 6 concluída</strong><span>Diário do professor, aulas por disciplina, conteúdo ministrado, tarefa e frequência individual por aula.</span></p>
-            <p><strong>Próxima fase</strong><span>Boletim, fechamento de médias, recuperação e consolidação do desempenho.</span></p>
+            <p><strong>Fase 7 concluída</strong><span>Boletim oficial, fechamento de médias, recuperação, frequência e resultado final.</span></p>
+            <p><strong>Próxima fase</strong><span>Financeiro completo, mensalidades, cobranças e pagamentos.</span></p>
           </div>
         </div>
       </section>
