@@ -1,0 +1,206 @@
+.classes-manager,
+.enrollment-manager {
+  display: grid;
+  gap: 22px;
+}
+
+.class-form-panel,
+.enrollment-form-panel,
+.reenrollment-panel {
+  border-color: #dce6f5;
+  box-shadow: 0 14px 40px rgba(37, 99, 235, .05);
+}
+
+.class-form,
+.enrollment-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.class-form label,
+.enrollment-form label {
+  display: grid;
+  gap: 7px;
+  color: #41506a;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.class-form input,
+.class-form select,
+.enrollment-form input,
+.enrollment-form select,
+.enrollment-toolbar select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #d8e0ea;
+  border-radius: 11px;
+  background: white;
+  color: var(--text);
+  padding: 0 12px;
+  outline: none;
+}
+
+.class-form input:focus,
+.class-form select:focus,
+.enrollment-form input:focus,
+.enrollment-form select:focus,
+.enrollment-toolbar select:focus {
+  border-color: #7da0f9;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, .08);
+}
+
+.class-field--wide,
+.enrollment-field--wide {
+  grid-column: span 2;
+}
+
+.class-form-actions,
+.enrollment-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.class-card--real {
+  position: relative;
+}
+
+.year-badge {
+  min-width: 52px;
+  height: 30px;
+  border-radius: 999px;
+  background: #f2f5f9;
+  color: #617087;
+  display: inline-grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.class-card--real .class-meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.capacity-track {
+  height: 7px;
+  margin: -3px 0 18px;
+  background: #edf1f6;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.capacity-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4f7cff, #2f66ef);
+}
+
+.class-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.enrollment-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 160px auto;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.enrollment-toolbar .search-box {
+  max-width: none;
+}
+
+.enrollment-toolbar select {
+  min-height: 42px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.enrollment-student {
+  display: grid;
+  gap: 2px;
+}
+
+.enrollment-student small,
+.table-subline,
+.muted-small,
+.panel-subtitle {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.table-subline {
+  display: block;
+  margin-top: 3px;
+}
+
+.type-chip {
+  display: inline-flex;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #edf3ff;
+  color: #315fae;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.enrollment-table td {
+  vertical-align: middle;
+}
+
+.reenrollment-panel {
+  border-left: 4px solid #4f7cff;
+}
+
+@media (max-width: 1000px) {
+  .class-form,
+  .enrollment-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .enrollment-toolbar {
+    grid-template-columns: 1fr 150px;
+  }
+
+  .enrollment-toolbar .record-count {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 650px) {
+  .class-form,
+  .enrollment-form,
+  .enrollment-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .class-field--wide,
+  .enrollment-field--wide,
+  .enrollment-toolbar .record-count {
+    grid-column: auto;
+  }
+
+  .class-form-actions,
+  .enrollment-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .class-form-actions .button,
+  .enrollment-form-actions .button {
+    width: 100%;
+  }
+
+  .class-card--real .class-meta {
+    grid-template-columns: 1fr 1fr;
+  }
+}
