@@ -11,7 +11,12 @@ export async function readIdempotency(
   if (!key) return null;
 
   if (key.length > 200) {
-    throw new Error("Idempotency-Key excede 200 caracteres.");
+    return {
+      keyHash: null,
+      responseStatus: 400,
+      responseBody: { error: "Idempotency-Key excede 200 caracteres." },
+      resourceId: null,
+    };
   }
 
   const keyHash = hashSecret(
@@ -48,7 +53,9 @@ export async function readIdempotency(
           responseStatus: null,
           responseBody: undefined,
           resourceId: null,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          // Reserva curta enquanto a primeira requisição está executando.
+          // saveIdempotency estende para 24 h ao persistir a resposta.
+          expiresAt: new Date(Date.now() + 30 * 1000),
         },
       });
       return null;
@@ -92,7 +99,14 @@ export async function readIdempotency(
     }
   }
 
-  throw new Error("Requisição idempotente ainda está em processamento.");
+  return {
+    keyHash,
+    responseStatus: 409,
+    responseBody: {
+      error: "Requisição idempotente ainda está em processamento.",
+    },
+    resourceId: null,
+  };
 }
 
 export function idempotencyHash(
@@ -102,7 +116,7 @@ export function idempotencyHash(
 ) {
   const key = request.headers.get("idempotency-key")?.trim();
   if (!key) return null;
-  if (key.length > 200) throw new Error("Idempotency-Key inválida.");
+  if (key.length > 200) return null;
 
   return hashSecret(
     "idempotency:" + schoolId + ":" + operation + ":" + key,
