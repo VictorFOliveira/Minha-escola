@@ -122,6 +122,20 @@ export function FinanceManager({ canConfigure }: { canConfigure: boolean }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState("");
+  const [contractPage, setContractPage] = useState(1);
+  const [chargePage, setChargePage] = useState(1);
+  const [contractMeta, setContractMeta] = useState({
+    page: 1,
+    pageSize: 50,
+    total: 0,
+    pages: 1,
+  });
+  const [chargeMeta, setChargeMeta] = useState({
+    page: 1,
+    pageSize: 50,
+    total: 0,
+    pages: 1,
+  });
 
   async function loadAll() {
     setLoading(true);
@@ -132,8 +146,14 @@ export function FinanceManager({ canConfigure }: { canConfigure: boolean }) {
         fetch("/api/finance/settings", { cache: "no-store" }),
         fetch("/api/finance/plans", { cache: "no-store" }),
         fetch("/api/finance/enrollments", { cache: "no-store" }),
-        fetch("/api/finance/contracts", { cache: "no-store" }),
-        fetch("/api/finance/charges", { cache: "no-store" }),
+        fetch(
+          "/api/finance/contracts?page=" + contractPage + "&pageSize=50",
+          { cache: "no-store" },
+        ),
+        fetch(
+          "/api/finance/charges?page=" + chargePage + "&pageSize=50",
+          { cache: "no-store" },
+        ),
         fetch("/api/finance/summary", { cache: "no-store" }),
       ]);
 
@@ -151,7 +171,9 @@ export function FinanceManager({ canConfigure }: { canConfigure: boolean }) {
       setPlans(data[1].plans || []);
       setEnrollments(data[2].enrollments || []);
       setContracts(data[3].contracts || []);
+      if (data[3].meta) setContractMeta(data[3].meta);
       setCharges(data[4].charges || []);
+      if (data[4].meta) setChargeMeta(data[4].meta);
       setSummary(data[5].summary || null);
     } catch {
       setError("Não foi possível conectar ao servidor.");
@@ -162,7 +184,7 @@ export function FinanceManager({ canConfigure }: { canConfigure: boolean }) {
 
   useEffect(() => {
     void loadAll();
-  }, []);
+  }, [contractPage, chargePage]);
 
   const eligibleEnrollments = useMemo(
     () => enrollments.filter((item) => !item.billingContract),
@@ -754,7 +776,39 @@ export function FinanceManager({ canConfigure }: { canConfigure: boolean }) {
               <div>
                 <span className="eyebrow">CONTRATOS</span>
                 <h2>Matrículas contratadas</h2>
+                <small className="muted-small">
+                  {contractMeta.total} contrato(s)
+                </small>
               </div>
+              {contractMeta.pages > 1 ? (
+                <div className="mini-actions">
+                  <button
+                    className="inline-action"
+                    type="button"
+                    disabled={contractPage <= 1}
+                    onClick={() =>
+                      setContractPage((value) => Math.max(1, value - 1))
+                    }
+                  >
+                    Anterior
+                  </button>
+                  <span className="muted-small">
+                    {contractMeta.page}/{contractMeta.pages}
+                  </span>
+                  <button
+                    className="inline-action"
+                    type="button"
+                    disabled={contractPage >= contractMeta.pages}
+                    onClick={() =>
+                      setContractPage((value) =>
+                        Math.min(contractMeta.pages, value + 1),
+                      )
+                    }
+                  >
+                    Próxima
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <div className="finance-contract-list">
@@ -884,7 +938,39 @@ export function FinanceManager({ canConfigure }: { canConfigure: boolean }) {
               <div>
                 <span className="eyebrow">COBRANÇAS</span>
                 <h2>Mensalidades e recebimentos</h2>
+                <small className="muted-small">
+                  {chargeMeta.total} cobrança(s)
+                </small>
               </div>
+              {chargeMeta.pages > 1 ? (
+                <div className="mini-actions">
+                  <button
+                    className="inline-action"
+                    type="button"
+                    disabled={chargePage <= 1}
+                    onClick={() =>
+                      setChargePage((value) => Math.max(1, value - 1))
+                    }
+                  >
+                    Anterior
+                  </button>
+                  <span className="muted-small">
+                    {chargeMeta.page}/{chargeMeta.pages}
+                  </span>
+                  <button
+                    className="inline-action"
+                    type="button"
+                    disabled={chargePage >= chargeMeta.pages}
+                    onClick={() =>
+                      setChargePage((value) =>
+                        Math.min(chargeMeta.pages, value + 1),
+                      )
+                    }
+                  >
+                    Próxima
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <div className="table-wrap">
