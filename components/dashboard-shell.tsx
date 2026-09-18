@@ -1,12 +1,40 @@
-const navItems = [
-  { href: "/dashboard", label: "Visão geral", icon: "◫" },
-  { href: "/dashboard/alunos", label: "Alunos", icon: "◎" },
-  { href: "/dashboard/turmas", label: "Turmas", icon: "▦" },
-  { href: "/dashboard/frequencia", label: "Frequência", icon: "✓" },
-  { href: "/dashboard/financeiro", label: "Financeiro", icon: "$" },
+import { LogoutButton } from "@/components/logout-button";
+import { ROLE_LABELS, type AppRole } from "@/lib/permissions";
+import type { SessionUser } from "@/lib/session";
+
+const navItems: Array<{
+  href: string;
+  label: string;
+  icon: string;
+  roles: AppRole[];
+}> = [
+  { href: "/dashboard", label: "Visão geral", icon: "◫", roles: ["ADMIN", "SECRETARY", "TEACHER", "FINANCE", "GUARDIAN"] },
+  { href: "/dashboard/alunos", label: "Alunos", icon: "◎", roles: ["ADMIN", "SECRETARY"] },
+  { href: "/dashboard/turmas", label: "Turmas", icon: "▦", roles: ["ADMIN", "SECRETARY", "TEACHER"] },
+  { href: "/dashboard/frequencia", label: "Frequência", icon: "✓", roles: ["ADMIN", "SECRETARY", "TEACHER"] },
+  { href: "/dashboard/financeiro", label: "Financeiro", icon: "$", roles: ["ADMIN", "FINANCE"] },
+  { href: "/dashboard/usuarios", label: "Usuários", icon: "♙", roles: ["ADMIN"] },
 ];
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+export function DashboardShell({
+  children,
+  user,
+}: {
+  children: React.ReactNode;
+  user: SessionUser;
+}) {
+  const allowedItems = navItems.filter((item) => item.roles.includes(user.role));
+  const canCreateStudent = user.role === "ADMIN" || user.role === "SECRETARY";
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -20,7 +48,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         <nav className="sidebar-nav" aria-label="Navegação principal">
           <p className="nav-label">GESTÃO</p>
-          {navItems.map((item) => (
+          {allowedItems.map((item) => (
             <a key={item.href} className="nav-item" href={item.href}>
               <span className="nav-icon">{item.icon}</span>
               {item.label}
@@ -37,25 +65,28 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="sidebar-user">
-          <div className="avatar">AD</div>
-          <div>
-            <strong>Administrador</strong>
-            <span>Secretaria</span>
+          <div className="avatar">{initials(user.name) || "US"}</div>
+          <div className="sidebar-user-copy">
+            <strong>{user.name}</strong>
+            <span>{ROLE_LABELS[user.role]}</span>
           </div>
+          <LogoutButton />
         </div>
       </aside>
 
       <main className="dashboard-main">
         <header className="dashboard-topbar">
           <div>
-            <p className="eyebrow">COLÉGIO DEMONSTRAÇÃO</p>
-            <h1>Olá, bem-vindo 👋</h1>
+            <p className="eyebrow">{user.schoolName.toUpperCase()}</p>
+            <h1>Olá, {user.name.split(" ")[0]} 👋</h1>
           </div>
           <div className="topbar-actions">
             <button className="icon-button" aria-label="Notificações">🔔</button>
-            <a className="button button--primary button--small" href="/dashboard/alunos">
-              + Novo aluno
-            </a>
+            {canCreateStudent ? (
+              <a className="button button--primary button--small" href="/dashboard/alunos">
+                + Novo aluno
+              </a>
+            ) : null}
           </div>
         </header>
         {children}
