@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 
-const readRoles = ["ADMIN", "SECRETARY", "TEACHER"];
+const readRoles = ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"];
 const writeRoles = ["ADMIN", "SECRETARY"];
 
 export async function GET(request: Request) {
@@ -19,6 +19,13 @@ export async function GET(request: Request) {
       class: {
         schoolId: session.schoolId,
         ...(Number.isInteger(schoolYear) ? { schoolYear: schoolYear as number } : {}),
+        ...(session.role === "TEACHER" && session.teacherId
+          ? {
+              classSubjects: {
+                some: { teacherId: session.teacherId },
+              },
+            }
+          : {}),
       },
     },
     orderBy: [{ class: { schoolYear: "desc" } }, { startedAt: "desc" }],
