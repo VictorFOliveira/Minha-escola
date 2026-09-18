@@ -22,6 +22,12 @@ enum EnrollmentStatus {
   CANCELLED
 }
 
+enum EnrollmentType {
+  NEW
+  REENROLLMENT
+  TRANSFER
+}
+
 enum ChargeStatus {
   PENDING
   PAID
@@ -188,6 +194,7 @@ model ClassGroup {
   gradeLevel  String
   shift       String
   room        String?
+  capacity    Int?
   schoolYear  Int
   enrollments Enrollment[]
   attendances Attendance[]
@@ -199,16 +206,23 @@ model ClassGroup {
 }
 
 model Enrollment {
-  id        String           @id @default(cuid())
-  studentId String
-  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  classId   String
-  class     ClassGroup       @relation(fields: [classId], references: [id], onDelete: Cascade)
-  status    EnrollmentStatus @default(ACTIVE)
-  startedAt DateTime         @default(now())
-  endedAt   DateTime?
+  id                   String           @id @default(cuid())
+  studentId            String
+  student              Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  classId              String
+  class                ClassGroup       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  type                 EnrollmentType   @default(NEW)
+  status               EnrollmentStatus @default(ACTIVE)
+  startedAt            DateTime         @default(now())
+  endedAt              DateTime?
+  notes                String?
+  previousEnrollmentId String?          @unique
+  previousEnrollment   Enrollment?      @relation("EnrollmentHistory", fields: [previousEnrollmentId], references: [id], onDelete: SetNull)
+  nextEnrollment       Enrollment?      @relation("EnrollmentHistory")
 
   @@unique([studentId, classId])
+  @@index([classId, status])
+  @@index([studentId, status])
 }
 
 model Attendance {
