@@ -1,0 +1,68 @@
+name: Bootstrap database artifacts
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "package.json"
+      - "prisma/schema.prisma"
+      - ".github/workflows/bootstrap-artifacts.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Generate package lock
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Install exact dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/minha_escola
+
+      - name: Generate baseline migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p prisma/migrations/00000000000000_baseline
+          npx prisma migrate diff \
+            --from-empty \
+            --to-schema prisma/schema.prisma \
+            --script > prisma/migrations/00000000000000_baseline/migration.sql
+          printf 'provider = "postgresql"\n' > prisma/migrations/migration_lock.toml
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/minha_escola
+
+      - name: Commit generated artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json prisma/migrations/
+          if git diff --cached --quiet; then
+            echo "Artifacts already up to date."
+            exit 0
+          fi
+          git commit -m "chore: generate lockfile and baseline migration [skip ci]"
+          git push
