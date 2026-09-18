@@ -7,7 +7,9 @@ type Role =
   | "COORDINATOR"
   | "SECRETARY"
   | "TEACHER"
-  | "FINANCE";
+  | "FINANCE"
+  | "STUDENT"
+  | "GUARDIAN";
 
 type Communication = {
   id: string;
