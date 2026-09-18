@@ -95,5 +95,42 @@ export async function PUT(request: Request) {
     },
   });
 
+  const affectedEnrollments = await prisma.enrollment.findMany({
+    where: {
+      class: {
+        schoolId: session.schoolId,
+        schoolYear,
+      },
+      status: { in: ["ACTIVE", "PENDING"] },
+    },
+    select: { id: true },
+  });
+
+  const enrollmentIds = affectedEnrollments.map((item) => item.id);
+
+  if (enrollmentIds.length) {
+    await prisma.$transaction([
+      prisma.subjectFinalResult.updateMany({
+        where: { enrollmentId: { in: enrollmentIds } },
+        data: {
+          annualAverage: null,
+          recoveryScore: null,
+          finalAverage: null,
+          status: "IN_PROGRESS",
+          closedAt: null,
+          closedByUserId: null,
+        },
+      }),
+      prisma.enrollmentAcademicResult.updateMany({
+        where: { enrollmentId: { in: enrollmentIds } },
+        data: {
+          status: "IN_PROGRESS",
+          closedAt: null,
+          closedByUserId: null,
+        },
+      }),
+    ]);
+  }
+
   return NextResponse.json({ policy });
 }
