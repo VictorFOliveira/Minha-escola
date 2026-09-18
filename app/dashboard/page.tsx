@@ -1,6 +1,23 @@
-import { metrics, recentActivity, students } from "@/lib/mock-data";
+import type { Prisma } from "@prisma/client";
+import { redirect } from "next/navigation";
+import { calculateAttendancePercent } from "@/lib/grade-calculations";
+import { prisma } from "@/lib/prisma";
 import { ROLE_LABELS } from "@/lib/permissions";
 import { requireSession } from "@/lib/session";
+
+function money(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
+}
+
+const attendanceLabels = {
+  PRESENT: "Presenças",
+  LATE: "Atrasos",
+  ABSENT: "Faltas",
+  EXCUSED: "Justificadas",
+} as const;
 
 export default async function DashboardPage({
   searchParams,
@@ -10,46 +27,284 @@ export default async function DashboardPage({
   const session = await requireSession();
   const params = await searchParams;
 
-  const visibleMetrics =
-    session.role === "ADMIN"
-      ? metrics
-      : session.role === "COORDINATOR"
-        ? metrics.filter((metric) =>
-            ["Turmas", "Frequência média"].includes(metric.label),
-          )
-      : session.role === "SECRETARY"
-        ? metrics.filter((metric) =>
-            ["Alunos ativos", "Turmas", "Frequência média"].includes(metric.label),
-          )
-        : session.role === "TEACHER"
-          ? metrics.filter((metric) =>
-              ["Turmas", "Frequência média"].includes(metric.label),
-            )
-          : session.role === "FINANCE"
-            ? metrics.filter((metric) => metric.label === "Mensalidades em dia")
-            : [];
-
-  const showAttendance = ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"].includes(session.role);
-  const showStudents = ["ADMIN", "SECRETARY"].includes(session.role);
-  const visibleActivity =
-    session.role === "FINANCE"
-      ? recentActivity.filter((item) => item.title === "Mensalidade recebida")
-      : recentActivity.filter((item) => item.title !== "Mensalidade recebida" || session.role === "ADMIN");
+  if (session.role === "STUDENT") {
+    redirect("/portal/aluno");
+  }
 
   if (session.role === "GUARDIAN") {
-    return (
-      <div className="dashboard-content">
-        <section className="panel guardian-welcome">
-          <span className="eyebrow">PORTAL DO RESPONSÁVEL</span>
-          <h2>Seu acesso já está preparado</h2>
-          <p>
-            O perfil de responsável está autenticado e isolado dos módulos administrativos.
-            Notas, frequência, boletos e comunicados serão conectados na fase do portal.
-          </p>
-        </section>
-      </div>
-    );
+    redirect("/portal/responsavel");
   }
+
+  const latestClass = await prisma.classGroup.findFirst({
+    where: { schoolId: session.schoolId },
+    orderBy: [{ schoolYear: "desc" }, { createdAt: "desc" }],
+    select: { schoolYear: true },
+  });
+
+  const schoolYear = latestClass?.schoolYear ?? new Date().getFullYear();
+  const startOfMonth = new Date(
+    Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1),
+  );
+
+  const showStudents = ["ADMIN", "SECRETARY"].includes(session.role);
+  const showAttendance = [
+    "ADMIN",
+    "COORDINATOR",
+    "SECRETARY",
+    "TEACHER",
+  ].includes(session.role);
+  const showFinance = ["ADMIN", "FINANCE"].includes(session.role);
+  const showClasses = [
+    "ADMIN",
+    "COORDINATOR",
+    "SECRETARY",
+    "TEACHER",
+  ].includes(session.role);
+
+  const attendanceWhere: Prisma.LessonAttendanceWhereInput =
+    session.role === "TEACHER"
+      ? {
+          lesson: {
+            status: "COMPLETED",
+            classSubject: {
+              teacherId: session.teacherId || "__teacher_without_link__",
+              class: { schoolId: session.schoolId },
+            },
+          },
+        }
+      : {
+          lesson: {
+            status: "COMPLETED",
+            classSubject: {
+              class: { schoolId: session.schoolId },
+            },
+          },
+        };
+
+  const [
+    activeStudents,
+    newStudentsThisMonth,
+    schoolClasses,
+    teacherClasses,
+    attendanceGroups,
+    recentStudents,
+    chargeCount,
+    onTimeChargeCount,
+    overdueChargeCount,
+    receivable,
+  ] = await Promise.all([
+    showStudents
+      ? prisma.student.count({
+          where: { schoolId: session.schoolId, status: "ACTIVE" },
+        })
+      : Promise.resolve(0),
+    showStudents
+      ? prisma.student.count({
+          where: {
+            schoolId: session.schoolId,
+            status: "ACTIVE",
+            createdAt: { gte: startOfMonth },
+          },
+        })
+      : Promise.resolve(0),
+    showClasses && session.role !== "TEACHER"
+      ? prisma.classGroup.count({
+          where: { schoolId: session.schoolId, schoolYear },
+        })
+      : Promise.resolve(0),
+    showClasses && session.role === "TEACHER"
+      ? prisma.classSubject.findMany({
+          where: {
+            teacherId: session.teacherId || "__teacher_without_link__",
+            class: {
+              schoolId: session.schoolId,
+              schoolYear,
+            },
+          },
+          distinct: ["classId"],
+          select: { classId: true },
+        })
+      : Promise.resolve([]),
+    showAttendance
+      ? prisma.lessonAttendance.groupBy({
+          by: ["status"],
+          where: attendanceWhere,
+          _count: { _all: true },
+        })
+      : Promise.resolve([]),
+    showStudents
+      ? prisma.student.findMany({
+          where: {
+            schoolId: session.schoolId,
+            status: "ACTIVE",
+          },
+          orderBy: { createdAt: "desc" },
+          take: 4,
+          select: {
+            id: true,
+            name: true,
+            registration: true,
+            enrollments: {
+              where: { status: { in: ["ACTIVE", "PENDING"] } },
+              orderBy: { startedAt: "desc" },
+              take: 1,
+              select: {
+                status: true,
+                class: {
+                  select: {
+                    name: true,
+                    shift: true,
+                    schoolYear: true,
+                  },
+                },
+              },
+            },
+          },
+        })
+      : Promise.resolve([]),
+    showFinance
+      ? prisma.charge.count({
+          where: {
+            schoolId: session.schoolId,
+            status: { in: ["PENDING", "PARTIAL", "PAID", "OVERDUE"] },
+          },
+        })
+      : Promise.resolve(0),
+    showFinance
+      ? prisma.charge.count({
+          where: {
+            schoolId: session.schoolId,
+            status: { in: ["PENDING", "PAID"] },
+          },
+        })
+      : Promise.resolve(0),
+    showFinance
+      ? prisma.charge.count({
+          where: {
+            schoolId: session.schoolId,
+            status: "OVERDUE",
+          },
+        })
+      : Promise.resolve(0),
+    showFinance
+      ? prisma.charge.aggregate({
+          where: {
+            schoolId: session.schoolId,
+            status: { in: ["PENDING", "PARTIAL", "OVERDUE"] },
+          },
+          _sum: {
+            amount: true,
+            paidAmount: true,
+          },
+        })
+      : Promise.resolve({
+          _sum: { amount: null, paidAmount: null },
+        }),
+  ]);
+
+  const attendanceCounts = {
+    present: 0,
+    late: 0,
+    absent: 0,
+    excused: 0,
+  };
+
+  for (const item of attendanceGroups) {
+    const count = item._count._all;
+    if (item.status === "PRESENT") attendanceCounts.present = count;
+    if (item.status === "LATE") attendanceCounts.late = count;
+    if (item.status === "ABSENT") attendanceCounts.absent = count;
+    if (item.status === "EXCUSED") attendanceCounts.excused = count;
+  }
+
+  const attendanceTotal =
+    attendanceCounts.present +
+    attendanceCounts.late +
+    attendanceCounts.absent +
+    attendanceCounts.excused;
+
+  const attendancePercent = calculateAttendancePercent(attendanceCounts);
+  const receivableAmount = Math.max(
+    0,
+    Number(receivable._sum.amount || 0) -
+      Number(receivable._sum.paidAmount || 0),
+  );
+  const onTimePercent =
+    chargeCount > 0 ? Math.round((onTimeChargeCount / chargeCount) * 1000) / 10 : null;
+
+  const metrics: Array<{
+    label: string;
+    value: string;
+    detail: string;
+    tone: string;
+  }> = [];
+
+  if (showStudents) {
+    metrics.push({
+      label: "Alunos ativos",
+      value: activeStudents.toLocaleString("pt-BR"),
+      detail:
+        newStudentsThisMonth > 0
+          ? `+${newStudentsThisMonth} neste mês`
+          : "Nenhum novo cadastro neste mês",
+      tone: "blue",
+    });
+  }
+
+  if (showClasses) {
+    const classCount =
+      session.role === "TEACHER" ? teacherClasses.length : schoolClasses;
+
+    metrics.push({
+      label: session.role === "TEACHER" ? "Minhas turmas" : "Turmas",
+      value: classCount.toLocaleString("pt-BR"),
+      detail: `Ano letivo ${schoolYear}`,
+      tone: "violet",
+    });
+  }
+
+  if (showAttendance) {
+    metrics.push({
+      label: "Frequência média",
+      value:
+        attendancePercent === null
+          ? "—"
+          : attendancePercent.toLocaleString("pt-BR", {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            }) + "%",
+      detail:
+        attendanceTotal > 0
+          ? `${attendanceTotal.toLocaleString("pt-BR")} registros concluídos`
+          : "Sem chamadas concluídas",
+      tone: "green",
+    });
+  }
+
+  if (showFinance) {
+    metrics.push({
+      label: "Mensalidades em dia",
+      value:
+        onTimePercent === null
+          ? "—"
+          : onTimePercent.toLocaleString("pt-BR", {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            }) + "%",
+      detail:
+        overdueChargeCount > 0
+          ? `${overdueChargeCount} vencida(s) • ${money(receivableAmount)} a receber`
+          : `${money(receivableAmount)} a receber`,
+      tone: "orange",
+    });
+  }
+
+  const attendanceBars = [
+    { key: "PRESENT" as const, count: attendanceCounts.present },
+    { key: "LATE" as const, count: attendanceCounts.late },
+    { key: "ABSENT" as const, count: attendanceCounts.absent },
+    { key: "EXCUSED" as const, count: attendanceCounts.excused },
+  ];
 
   return (
     <div className="dashboard-content">
@@ -60,7 +315,7 @@ export default async function DashboardPage({
       ) : null}
 
       <section className="metric-grid metric-grid--adaptive">
-        {visibleMetrics.map((metric) => (
+        {metrics.map((metric) => (
           <article className="metric-card" key={metric.label}>
             <div className={"metric-dot metric-dot--" + metric.tone} />
             <p>{metric.label}</p>
@@ -70,76 +325,121 @@ export default async function DashboardPage({
         ))}
       </section>
 
-      <section className={showAttendance ? "dashboard-grid" : "dashboard-grid dashboard-grid--single"}>
-        {showAttendance ? (
+      {showAttendance ? (
+        <section className="dashboard-grid dashboard-grid--single">
           <article className="panel panel--wide">
             <div className="panel-heading">
               <div>
-                <span className="eyebrow">RESUMO SEMANAL</span>
-                <h2>Presença dos alunos</h2>
+                <span className="eyebrow">FREQUÊNCIA REAL</span>
+                <h2>Registros de aulas concluídas</h2>
               </div>
-              <span className="status-chip status-chip--success">94,2% média</span>
+              <span className="status-chip status-chip--success">
+                {attendancePercent === null
+                  ? "Sem dados"
+                  : attendancePercent.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    }) + "% frequência"}
+              </span>
             </div>
-            <div className="attendance-chart" aria-label="Gráfico demonstrativo de frequência">
-              {[78, 86, 91, 84, 96, 92, 94].map((height, index) => (
-                <div className="chart-column" key={index}>
-                  <div className="bar-track">
-                    <span style={{ height: height + "%" }} />
-                  </div>
-                  <small>{["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Hoje"][index]}</small>
-                </div>
-              ))}
-            </div>
-          </article>
-        ) : null}
 
-        <article className="panel">
-          <div className="panel-heading">
-            <div>
-              <span className="eyebrow">ATIVIDADE</span>
-              <h2>Últimos eventos</h2>
-            </div>
-          </div>
-          <div className="activity-list">
-            {visibleActivity.map((item) => (
-              <div className="activity-item" key={item.title}>
-                <span className="activity-bullet" />
-                <div>
-                  <strong>{item.title}</strong>
-                  <p>{item.detail}</p>
-                  <small>{item.time}</small>
-                </div>
+            {attendanceTotal > 0 ? (
+              <div
+                className="attendance-chart"
+                aria-label="Distribuição real dos registros de frequência"
+              >
+                {attendanceBars.map((item) => {
+                  const percentage = Math.round(
+                    (item.count / attendanceTotal) * 100,
+                  );
+
+                  return (
+                    <div className="chart-column" key={item.key}>
+                      <div className="bar-track">
+                        <span style={{ height: Math.max(percentage, item.count ? 4 : 0) + "%" }} />
+                      </div>
+                      <small>
+                        {attendanceLabels[item.key]} {percentage}%
+                      </small>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
-        </article>
-      </section>
+            ) : (
+              <p className="empty-state">
+                Ainda não há registros de frequência em aulas concluídas.
+              </p>
+            )}
+          </article>
+        </section>
+      ) : null}
 
       {showStudents ? (
         <section className="panel">
           <div className="panel-heading">
             <div>
-              <span className="eyebrow">MATRÍCULAS</span>
+              <span className="eyebrow">CADASTROS REAIS</span>
               <h2>Alunos recentes</h2>
             </div>
-            <a className="text-link" href="/dashboard/alunos">Ver todos →</a>
+            <a className="text-link" href="/dashboard/alunos">
+              Ver todos →
+            </a>
           </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead><tr><th>Aluno</th><th>Matrícula</th><th>Turma</th><th>Turno</th><th>Status</th></tr></thead>
-              <tbody>
-                {students.slice(0, 4).map((student) => (
-                  <tr key={student.code}>
-                    <td><strong>{student.name}</strong></td>
-                    <td>{student.code}</td>
-                    <td>{student.className}</td>
-                    <td>{student.shift}</td>
-                    <td><span className={student.status === "Ativo" ? "status-chip status-chip--success" : "status-chip status-chip--warning"}>{student.status}</span></td>
+
+          {recentStudents.length ? (
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Aluno</th>
+                    <th>Matrícula</th>
+                    <th>Turma</th>
+                    <th>Turno</th>
+                    <th>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {recentStudents.map((student) => {
+                    const enrollment = student.enrollments[0];
+
+                    return (
+                      <tr key={student.id}>
+                        <td>
+                          <strong>{student.name}</strong>
+                        </td>
+                        <td>{student.registration}</td>
+                        <td>
+                          {enrollment
+                            ? `${enrollment.class.name} • ${enrollment.class.schoolYear}`
+                            : "Sem matrícula"}
+                        </td>
+                        <td>{enrollment?.class.shift || "—"}</td>
+                        <td>
+                          <span
+                            className={
+                              enrollment?.status === "ACTIVE"
+                                ? "status-chip status-chip--success"
+                                : enrollment?.status === "PENDING"
+                                  ? "status-chip status-chip--warning"
+                                  : "status-chip"
+                            }
+                          >
+                            {enrollment?.status === "ACTIVE"
+                              ? "Ativo"
+                              : enrollment?.status === "PENDING"
+                                ? "Pendente"
+                                : "Sem matrícula"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="empty-state">Nenhum aluno ativo cadastrado.</p>
+          )}
         </section>
       ) : null}
     </div>
