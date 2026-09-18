@@ -1,0 +1,110 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
+import {
+  addMonthsPreservingDay,
+  calculateDiscount,
+  roundMoney,
+} from "@/lib/finance";
+
+type Context = { params: Promise<{ id: string }> };
+
+export async function POST(_: Request, context: Context) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+  if (!["ADMIN", "FINANCE"].includes(session.role)) {
+    return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
+  }
+
+  const { id } = await context.params;
+  const contract = await prisma.billingContract.findFirst({
+    where: {
+      id,
+      schoolId: session.schoolId,
+      status: "ACTIVE",
+    },
+    include: {
+      enrollment: { include: { student: true } },
+      guardian: true,
+      benefits: { where: { active: true } },
+      charges: true,
+    },
+  });
+
+  if (!contract) {
+    return NextResponse.json({ error: "Contrato ativo não encontrado." }, { status: 404 });
+  }
+
+  if (!contract.guardian) {
+    return NextResponse.json(
+      { error: "O contrato precisa possuir um responsável financeiro." },
+      { status: 409 },
+    );
+  }
+
+  const existingNumbers = new Set(
+    contract.charges
+      .map((charge) => charge.installmentNumber)
+      .filter((value): value is number => value !== null),
+  );
+
+  const baseAmount = Number(contract.installmentAmount);
+  const createData = [];
+
+  for (let index = 0; index < contract.installments; index += 1) {
+    const installmentNumber = index + 1;
+    if (existingNumbers.has(installmentNumber)) continue;
+
+    const dueDate = addMonthsPreservingDay(
+      contract.firstDueDate,
+      index,
+      contract.dueDay,
+    );
+    const discountAmount = calculateDiscount(
+      baseAmount,
+      dueDate,
+      contract.benefits.map((benefit) => ({
+        active: benefit.active,
+        valueType: benefit.valueType,
+        value: Number(benefit.value),
+        startsAt: benefit.startsAt,
+        endsAt: benefit.endsAt,
+      })),
+    );
+
+    createData.push({
+      schoolId: session.schoolId,
+      studentId: contract.enrollment.studentId,
+      enrollmentId: contract.enrollmentId,
+      guardianId: contract.guardianId,
+      contractId: contract.id,
+      installmentNumber,
+      description:
+        "Mensalidade " +
+        installmentNumber +
+        "/" +
+        contract.installments +
+        " - " +
+        contract.enrollment.student.name,
+      baseAmount,
+      discountAmount,
+      amount: roundMoney(baseAmount - discountAmount),
+      dueDate,
+      provider: "MANUAL" as const,
+    });
+  }
+
+  if (createData.length) {
+    await prisma.charge.createMany({ data: createData });
+  }
+
+  const charges = await prisma.charge.findMany({
+    where: { contractId: contract.id },
+    orderBy: { installmentNumber: "asc" },
+  });
+
+  return NextResponse.json({
+    created: createData.length,
+    charges,
+  });
+}
