@@ -27,7 +27,15 @@ export async function POST(request: Request, context: Context) {
     return NextResponse.json({ error: "Informe o parentesco/vínculo." }, { status: 400 });
   }
 
-  const link = await prisma.studentGuardian.upsert({
+  const link = await prisma.$transaction(async (tx) => {
+    if (Boolean(body?.financialResponsible)) {
+      await tx.studentGuardian.updateMany({
+        where: { studentId },
+        data: { financialResponsible: false },
+      });
+    }
+
+    return tx.studentGuardian.upsert({
     where: { studentId_guardianId: { studentId, guardianId: id } },
     update: {
       relationship,
@@ -41,6 +49,7 @@ export async function POST(request: Request, context: Context) {
       financialResponsible: Boolean(body?.financialResponsible),
       authorizedPickup: body?.authorizedPickup !== false,
     },
+    });
   });
 
   return NextResponse.json({ link });
@@ -59,6 +68,38 @@ export async function DELETE(request: Request, context: Context) {
 
   const guardian = await prisma.guardian.findFirst({ where: { id, schoolId: session.schoolId } });
   if (!guardian) return NextResponse.json({ error: "Responsável não encontrado." }, { status: 404 });
+
+  const links = await prisma.studentGuardian.findMany({
+    where: { studentId },
+    include: {
+      student: {
+        include: {
+          enrollments: {
+            where: { status: { in: ["ACTIVE", "PENDING"] } },
+            take: 1,
+          },
+        },
+      },
+    },
+  });
+
+  if (links.length <= 1) {
+    return NextResponse.json(
+      { error: "O aluno precisa permanecer vinculado a pelo menos um responsável." },
+      { status: 409 },
+    );
+  }
+
+  const currentLink = links.find((item) => item.guardianId === id);
+  if (
+    currentLink?.financialResponsible &&
+    currentLink.student.enrollments.length > 0
+  ) {
+    return NextResponse.json(
+      { error: "Defina outro responsável financeiro antes de remover este vínculo." },
+      { status: 409 },
+    );
+  }
 
   await prisma.studentGuardian.deleteMany({ where: { guardianId: id, studentId } });
   return NextResponse.json({ ok: true });
