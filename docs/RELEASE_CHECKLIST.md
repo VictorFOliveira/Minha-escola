@@ -65,8 +65,8 @@ Antes de importar uma escola real:
 
 Antes do go-live:
 
-- [ ] dashboard inicial sem dados mock;
-- [ ] fluxo GUARDIAN coerente com o Portal do Responsável já existente;
+- [x] dashboard inicial sem dados mock;
+- [x] fluxo GUARDIAN coerente com o Portal do Responsável já existente;
 - [ ] upload + scanner validados na infraestrutura real;
 - [ ] teste de carga repetido na VPS/plataforma final.
 
