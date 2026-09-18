@@ -64,8 +64,15 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   const url = typeof body?.url === "string" ? body.url.trim() : "";
-  const events = Array.isArray(body?.events)
-    ? Array.from(new Set(body.events.filter((event: unknown) => typeof event === "string" && allowedEvents.includes(event))))
+  const events: string[] = Array.isArray(body?.events)
+    ? Array.from(
+        new Set(
+          body.events.filter(
+            (event: unknown): event is string =>
+              typeof event === "string" && allowedEvents.includes(event),
+          ),
+        ),
+      )
     : [];
 
   if (!name || !validHttpsUrl(url) || !events.length) {
