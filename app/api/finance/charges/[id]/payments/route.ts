@@ -95,32 +95,62 @@ export async function POST(request: Request, context: Context) {
     currentStatus: charge.status,
   });
 
-  const result = await prisma.$transaction(async (tx) => {
-    const payment = await tx.payment.create({
-      data: {
-        chargeId: charge.id,
-        amount,
-        method,
-        provider: "MANUAL",
-        status: "RECEIVED",
-        paidAt,
-        recordedByUserId: session.id,
-        note: body?.note ? String(body.note).trim() : null,
-      },
-    });
+  let result;
+  try {
+    result = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.charge.updateMany({
+        where: {
+          id: charge.id,
+          schoolId: session.schoolId,
+          paidAmount: charge.paidAmount,
+          status: charge.status,
+        },
+        data: {
+          paidAmount: newPaidAmount,
+          paidAt: nextStatus === "PAID" ? paidAt : null,
+          status: nextStatus,
+          paymentMethod: method,
+        },
+      });
 
-    const updatedCharge = await tx.charge.update({
-      where: { id: charge.id },
-      data: {
-        paidAmount: newPaidAmount,
-        paidAt: nextStatus === "PAID" ? paidAt : null,
-        status: nextStatus,
-        paymentMethod: method,
-      },
-    });
+      if (claimed.count !== 1) {
+        throw new Error("CONCURRENT_CHARGE_UPDATE");
+      }
 
-    return { payment, charge: updatedCharge };
-  });
+      const payment = await tx.payment.create({
+        data: {
+          chargeId: charge.id,
+          amount,
+          method,
+          provider: "MANUAL",
+          status: "RECEIVED",
+          paidAt,
+          recordedByUserId: session.id,
+          note: body?.note ? String(body.note).trim() : null,
+        },
+      });
+
+      const updatedCharge = await tx.charge.findUniqueOrThrow({
+        where: { id: charge.id },
+      });
+
+      return { payment, charge: updatedCharge };
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "CONCURRENT_CHARGE_UPDATE"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "A cobrança foi alterada por outro pagamento. Atualize os dados e tente novamente.",
+        },
+        { status: 409 },
+      );
+    }
+    throw error;
+  }
 
   await Promise.all([
     saveIdempotency({
