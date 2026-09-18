@@ -73,6 +73,14 @@ export function PortalDocuments() {
                 </a>
                 <a
                   className="inline-action"
+                  href={"/api/documents/" + document.id + "/pdf"}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  PDF
+                </a>
+                <a
+                  className="inline-action"
                   href={"/verificar/" + document.verificationCode}
                   target="_blank"
                   rel="noreferrer"
