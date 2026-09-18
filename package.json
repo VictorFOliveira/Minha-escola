@@ -27,7 +27,11 @@
     "react-dom": "^19.1.1",
     "@aws-sdk/client-s3": "^3.1135.0",
     "@aws-sdk/s3-request-presigner": "^3.1135.0",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "@otplib/v12-adapter": "^13.5.0",
+    "exceljs": "^4.4.0",
+    "qrcode": "^1.5.4",
+    "@sentry/nextjs": "^10.75.0"
   },
   "devDependencies": {
     "@types/node": "^22.18.1",
@@ -35,7 +39,8 @@
     "@types/react-dom": "^19.1.9",
     "prisma": "^6.16.2",
     "typescript": "^5.9.2",
-    "tsx": "^4.23.13"
+    "tsx": "^4.23.13",
+    "@types/qrcode": "^1.5.6"
   },
   "engines": {
     "node": ">=22 <23"
