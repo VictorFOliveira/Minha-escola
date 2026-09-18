@@ -10,6 +10,11 @@ import {
   issuePlatformInvoice,
   suspendOverduePlatformSubscriptions,
 } from "@/lib/platform-billing";
+import {
+  deleteStoredObject,
+  storageConfigured,
+} from "@/lib/storage";
+import { processCommunicationDeliveries } from "@/lib/communication-delivery";
 
 function authorized(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -24,6 +29,73 @@ export async function POST(request: Request) {
 
   const now = new Date();
   const inThreeDays = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+  const deliveryResult = await processCommunicationDeliveries(200);
+
+  const privacySettings = await prisma.privacySettings.findMany({
+    select: {
+      schoolId: true,
+      auditRetentionDays: true,
+    },
+  });
+
+  let auditLogsDeleted = 0;
+
+  for (const settings of privacySettings) {
+    const cutoff = new Date(
+      now.getTime() -
+        settings.auditRetentionDays * 24 * 60 * 60 * 1000,
+    );
+
+    const deleted = await prisma.auditLog.deleteMany({
+      where: {
+        schoolId: settings.schoolId,
+        createdAt: { lt: cutoff },
+      },
+    });
+
+    auditLogsDeleted += deleted.count;
+  }
+
+  await prisma.securityThrottle.deleteMany({
+    where: {
+      updatedAt: {
+        lt: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+      },
+      OR: [
+        { blockedUntil: null },
+        { blockedUntil: { lt: now } },
+      ],
+    },
+  });
+
+  const staleUploads = await prisma.fileAsset.findMany({
+    where: {
+      status: "PENDING",
+      createdAt: {
+        lt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+      },
+    },
+    select: {
+      id: true,
+      objectKey: true,
+    },
+  });
+
+  if (storageConfigured()) {
+    for (const asset of staleUploads) {
+      await deleteStoredObject(asset.objectKey).catch(() => null);
+    }
+  }
+
+  if (staleUploads.length) {
+    await prisma.fileAsset.deleteMany({
+      where: {
+        id: { in: staleUploads.map((item) => item.id) },
+        status: "PENDING",
+      },
+    });
+  }
 
   await prisma.authorizationRequest.updateMany({
     where: {
@@ -177,5 +249,8 @@ export async function POST(request: Request) {
     dueSoonNotifications,
     platformInvoicesIssued,
     suspendedPlatformTenants,
+    communicationDeliveries: deliveryResult,
+    auditLogsDeleted,
+    staleUploadsDeleted: staleUploads.length,
   });
 }
