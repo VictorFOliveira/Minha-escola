@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createPlatformSession } from "@/lib/platform-session";
 import { auditPlatformAction } from "@/lib/audit";
+import {
+  checkRateLimit,
+  clearRateLimit,
+  requestFingerprint,
+} from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -17,6 +22,38 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Informe e-mail e senha." },
       { status: 400 },
+    );
+  }
+
+  const fingerprint = requestFingerprint(request);
+  const [ipThrottle, accountThrottle] = await Promise.all([
+    checkRateLimit({
+      action: "PLATFORM_LOGIN_IP",
+      key: fingerprint,
+      limit: 10,
+      windowMs: 15 * 60 * 1000,
+      blockMs: 60 * 60 * 1000,
+    }),
+    checkRateLimit({
+      action: "PLATFORM_LOGIN_ACCOUNT",
+      key: email,
+      limit: 6,
+      windowMs: 15 * 60 * 1000,
+      blockMs: 60 * 60 * 1000,
+    }),
+  ]);
+
+  if (!ipThrottle.allowed || !accountThrottle.allowed) {
+    const retryAfter = Math.max(
+      ipThrottle.retryAfterSeconds,
+      accountThrottle.retryAfterSeconds,
+    );
+    return NextResponse.json(
+      { error: "Muitas tentativas. Tente novamente mais tarde." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfter) },
+      },
     );
   }
 
@@ -39,10 +76,13 @@ export async function POST(request: Request) {
     );
   }
 
-  await prisma.platformAdmin.update({
-    where: { id: admin.id },
-    data: { lastLoginAt: new Date() },
-  });
+  await Promise.all([
+    prisma.platformAdmin.update({
+      where: { id: admin.id },
+      data: { lastLoginAt: new Date() },
+    }),
+    clearRateLimit("PLATFORM_LOGIN_ACCOUNT", email),
+  ]);
 
   await createPlatformSession({
     id: admin.id,
