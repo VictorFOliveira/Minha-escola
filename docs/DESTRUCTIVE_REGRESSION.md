@@ -45,7 +45,8 @@ Durante esta rodada foram encontrados e corrigidos:
 8. datas inválidas que poderiam chegar ao ORM;
 9. callback de malware fora de ordem;
 10. webhook Asaas duplicado/fora de ordem;
-11. retorno `void` de advisory lock incompatível com desserialização do Prisma.
+11. retorno `void` de advisory lock incompatível com desserialização do Prisma;
+12. asserção antiga do próprio teste de dashboard, que assumia um aluno fixo no top 4 e foi corrigida para validar o registro real mais recente do tenant.
 
 ## Primeira rodada pesada
 
