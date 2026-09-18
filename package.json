@@ -16,7 +16,8 @@
     "test": "tsx --test tests/**/*.test.ts",
     "test:security": "tsx --test tests/security/**/*.test.ts",
     "test:integration": "tsx --test tests/integration/**/*.test.ts",
-    "check": "npm run db:validate && npm run db:generate && npm run typecheck && npm run test && npm run build"
+    "check": "npm run db:validate && npm run db:generate && npm run test && npm run test:performance && npm run typecheck && npm run build",
+    "test:performance": "node scripts/performance-db.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
