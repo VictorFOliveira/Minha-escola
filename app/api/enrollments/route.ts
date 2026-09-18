@@ -180,17 +180,28 @@ export async function POST(request: Request) {
   }
 
   const status = body?.status === "PENDING" ? "PENDING" : "ACTIVE";
-  const enrollment = await prisma.enrollment.create({
-    data: {
-      studentId,
-      classId,
-      type: "NEW",
-      status,
-      notes: body?.notes?.trim() || null,
-      startedAt,
-    },
-    include: { student: true, class: true },
-  });
+  let enrollment;
+  try {
+    enrollment = await prisma.enrollment.create({
+      data: {
+        studentId,
+        classId,
+        type: "NEW",
+        status,
+        notes: body?.notes?.trim() || null,
+        startedAt,
+      },
+      include: { student: true, class: true },
+    });
+  } catch (error) {
+    if ((error as { code?: string })?.code === "P2002") {
+      return NextResponse.json(
+        { error: "A matrícula já foi criada por outra requisição." },
+        { status: 409 },
+      );
+    }
+    throw error;
+  }
 
   const responseBody = { enrollment };
 
