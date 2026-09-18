@@ -7,7 +7,7 @@ type Context = { params: Promise<{ id: string }> };
 export async function GET(_: Request, context: Context) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
-  if (!["ADMIN", "SECRETARY", "TEACHER"].includes(session.role)) {
+  if (!["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"].includes(session.role)) {
     return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
   }
 
