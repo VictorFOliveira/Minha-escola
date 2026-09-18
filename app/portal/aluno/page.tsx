@@ -28,6 +28,15 @@ const feedbackCategoryLabels: Record<string, string> = {
   GENERAL: "Geral",
 };
 
+const officialResultLabels: Record<string, string> = {
+  IN_PROGRESS: "Em andamento",
+  APPROVED: "Aprovado",
+  RECOVERY: "Recuperação",
+  FAILED_GRADE: "Reprovado por média",
+  FAILED_ATTENDANCE: "Reprovado por frequência",
+  FAILED: "Reprovado",
+};
+
 export default async function StudentPortalPage() {
   const session = await requireRole(["STUDENT"]);
 
@@ -39,6 +48,9 @@ export default async function StudentPortalPage() {
     },
     include: {
       student: true,
+      periodGrades: true,
+      subjectResults: true,
+      academicResult: true,
       class: {
         include: {
           curriculum: true,
@@ -442,6 +454,133 @@ export default async function StudentPortalPage() {
             Ainda não há médias disponíveis para esta matrícula.
           </div>
         )}
+      </section>
+
+      <section className="portal-panel" id="boletim">
+        <div className="portal-panel-heading portal-panel-heading--split">
+          <div>
+            <span className="eyebrow">BOLETIM OFICIAL</span>
+            <h2>Fechamentos por disciplina</h2>
+          </div>
+          <span
+            className={
+              enrollment.academicResult?.status === "APPROVED"
+                ? "status-chip status-chip--success"
+                : enrollment.academicResult?.status === "FAILED"
+                  ? "status-chip report-status--failed"
+                  : "status-chip"
+            }
+          >
+            {officialResultLabels[
+              enrollment.academicResult?.status || "IN_PROGRESS"
+            ]}
+          </span>
+        </div>
+
+        <div className="table-wrap">
+          <table className="data-table official-report-table">
+            <thead>
+              <tr>
+                <th>Disciplina</th>
+                {periods.map((period) => (
+                  <th key={period.id}>{period.name}</th>
+                ))}
+                <th>Anual</th>
+                <th>Recup.</th>
+                <th>Final</th>
+                <th>Freq.</th>
+                <th>Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {enrollment.class.classSubjects.map((classSubject) => {
+                const result = enrollment.subjectResults.find(
+                  (item) => item.classSubjectId === classSubject.id,
+                );
+
+                return (
+                  <tr key={classSubject.id}>
+                    <td>
+                      <span className="enrollment-student">
+                        <strong>{classSubject.subject.name}</strong>
+                        <small>
+                          {classSubject.teacher?.name ||
+                            "Professor não definido"}
+                        </small>
+                      </span>
+                    </td>
+                    {periods.map((period) => {
+                      const grade = enrollment.periodGrades.find(
+                        (item) =>
+                          item.classSubjectId === classSubject.id &&
+                          item.periodId === period.id,
+                      );
+
+                      return (
+                        <td key={period.id}>
+                          {grade?.average === null ||
+                          grade?.average === undefined
+                            ? "—"
+                            : Number(grade.average).toFixed(2)}
+                        </td>
+                      );
+                    })}
+                    <td>
+                      {result?.annualAverage === null ||
+                      result?.annualAverage === undefined
+                        ? "—"
+                        : Number(result.annualAverage).toFixed(2)}
+                    </td>
+                    <td>
+                      {result?.recoveryScore === null ||
+                      result?.recoveryScore === undefined
+                        ? "—"
+                        : Number(result.recoveryScore).toFixed(2)}
+                    </td>
+                    <td>
+                      <strong>
+                        {result?.finalAverage === null ||
+                        result?.finalAverage === undefined
+                          ? "—"
+                          : Number(result.finalAverage).toFixed(2)}
+                      </strong>
+                    </td>
+                    <td>
+                      {result?.attendancePercent === null ||
+                      result?.attendancePercent === undefined
+                        ? "—"
+                        : Number(result.attendancePercent).toFixed(1) + "%"}
+                    </td>
+                    <td>
+                      <span
+                        className={
+                          result?.status === "APPROVED"
+                            ? "status-chip status-chip--success"
+                            : result?.status === "RECOVERY"
+                              ? "status-chip status-chip--warning"
+                              : result?.status?.startsWith("FAILED")
+                                ? "status-chip report-status--failed"
+                                : "status-chip"
+                        }
+                      >
+                        {officialResultLabels[
+                          result?.status || "IN_PROGRESS"
+                        ]}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {enrollment.academicResult?.decisionNote ? (
+          <div className="final-decision-note">
+            <strong>Observação do fechamento</strong>
+            <p>{enrollment.academicResult.decisionNote}</p>
+          </div>
+        ) : null}
       </section>
 
       <section className="portal-panel">
