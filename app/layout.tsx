@@ -6,6 +6,7 @@ import "./phase4.css";
 import "./phase5.css";
 import "./phase6.css";
 import "./phase7.css";
+import "./phase8.css";
 
 export const metadata: Metadata = {
   title: "Minha Escola SaaS",
