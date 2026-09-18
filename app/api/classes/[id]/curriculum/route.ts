@@ -7,7 +7,7 @@ type Context = { params: Promise<{ id: string }> };
 export async function PUT(request: Request, context: Context) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
-  if (!["ADMIN", "SECRETARY"].includes(session.role)) {
+  if (!["ADMIN", "COORDINATOR", "SECRETARY"].includes(session.role)) {
     return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
   }
 
