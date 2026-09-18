@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { recomputeEnrollmentStatus } from "@/lib/report-card";
+import { notifyReportClosed } from "@/lib/system-communications";
 
 export async function POST(request: Request) {
   const session = await getSession();
@@ -57,6 +58,8 @@ export async function POST(request: Request) {
       closedByUserId: session.id,
     },
   });
+
+  await notifyReportClosed({ session, enrollmentId }).catch(() => null);
 
   return NextResponse.json({ academicResult });
 }
