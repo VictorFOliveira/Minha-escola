@@ -1,0 +1,114 @@
+name: Destructive regression
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  destroy:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[destructive]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: minha_escola
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d minha_escola"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/minha_escola?schema=public
+      AUTH_SECRET: destructive-auth-secret-minimum-32-characters
+      PLATFORM_AUTH_SECRET: destructive-platform-secret-minimum-32-characters
+      SECURITY_PEPPER: destructive-security-pepper-minimum-32-characters
+      CRON_SECRET: destructive-cron-secret-minimum-32-characters
+      APP_URL: http://127.0.0.1:3000
+      REQUIRE_MALWARE_SCAN: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Prisma
+        run: |
+          npm run db:generate
+          npm run db:migrate:deploy
+
+      - name: Tests before abuse
+        run: |
+          npm test
+          npm run test:performance
+          npm run typecheck
+
+      - name: Production build
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Start compiled application
+        shell: bash
+        env:
+          NODE_ENV: production
+        run: |
+          set -euo pipefail
+          npm start > /tmp/minha-escola-destructive.log 2>&1 &
+          echo $! > /tmp/minha-escola-destructive.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health/ready >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/minha-escola-destructive.log
+          exit 1
+
+      - name: Destructive HTTP regression
+        run: npm run test:e2e
+
+      - name: Five-times reference traffic
+        env:
+          LOAD_SUSTAINED_REQUESTS: "2000"
+          LOAD_SUSTAINED_CONCURRENCY: "100"
+          LOAD_BURST_REQUESTS: "1000"
+          LOAD_BURST_CONCURRENCY: "250"
+        run: npm run test:load
+
+      - name: Readiness after abuse
+        run: |
+          curl --fail-with-body --retry 5 --retry-all-errors             --max-time 15 http://127.0.0.1:3000/api/health/ready
+          npx prisma migrate status
+
+      - name: Application log
+        if: always()
+        shell: bash
+        run: tail -n 500 /tmp/minha-escola-destructive.log 2>/dev/null || true
+
+      - name: Stop application
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/minha-escola-destructive.pid ]; then
+            kill "$(cat /tmp/minha-escola-destructive.pid)" 2>/dev/null || true
+          fi
