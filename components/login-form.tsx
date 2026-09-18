@@ -27,6 +27,19 @@ export function LoginForm() {
         return;
       }
 
+      if (data.mfaRequired && data.challengeToken) {
+        sessionStorage.setItem(
+          "mfaChallenge",
+          JSON.stringify({
+            challengeToken: data.challengeToken,
+            mfaMode: data.mfaMode,
+            platform: false,
+          }),
+        );
+        window.location.href = "/mfa";
+        return;
+      }
+
       window.location.href = data.homePath || "/dashboard";
     } catch {
       setError("Não foi possível conectar ao servidor.");
