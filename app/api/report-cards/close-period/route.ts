@@ -116,8 +116,8 @@ export async function POST(request: Request) {
     );
   }
 
-  await prisma.$transaction(
-    results.map(({ enrollment, average }) =>
+  await prisma.$transaction([
+    ...results.map(({ enrollment, average }) =>
       prisma.periodGrade.upsert({
         where: {
           enrollmentId_classSubjectId_periodId: {
@@ -143,7 +143,17 @@ export async function POST(request: Request) {
         },
       }),
     ),
-  );
+    prisma.enrollmentAcademicResult.updateMany({
+      where: {
+        enrollmentId: { in: results.map(({ enrollment }) => enrollment.id) },
+      },
+      data: {
+        status: "IN_PROGRESS",
+        closedAt: null,
+        closedByUserId: null,
+      },
+    }),
+  ]);
 
   return NextResponse.json({
     ok: true,
