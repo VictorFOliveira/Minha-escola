@@ -1,32 +1,75 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { paginationFromRequest, paginationMeta } from "@/lib/pagination";
 
 const roles = ["ADMIN", "FINANCE"];
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   if (!roles.includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
 
-  const contracts = await prisma.billingContract.findMany({
-    where: { schoolId: session.schoolId },
-    orderBy: { createdAt: "desc" },
-    include: {
-      enrollment: {
-        include: {
-          student: true,
-          class: true,
-        },
-      },
-      guardian: true,
-      billingPlan: true,
-      benefits: { where: { active: true } },
-      _count: { select: { charges: true } },
-    },
+  const pagination = paginationFromRequest(request, {
+    defaultPageSize: 50,
+    maxPageSize: 100,
+    maxAll: 5000,
   });
 
-  return NextResponse.json({ contracts });
+  const where = {
+    schoolId: session.schoolId,
+    ...(pagination.search
+      ? {
+          OR: [
+            {
+              enrollment: {
+                student: {
+                  name: {
+                    contains: pagination.search,
+                    mode: "insensitive" as const,
+                  },
+                },
+              },
+            },
+            {
+              guardian: {
+                name: {
+                  contains: pagination.search,
+                  mode: "insensitive" as const,
+                },
+              },
+            },
+          ],
+        }
+      : {}),
+  };
+
+  const [contracts, total] = await Promise.all([
+    prisma.billingContract.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: pagination.skip,
+      take: pagination.take,
+      include: {
+        enrollment: {
+          include: {
+            student: true,
+            class: true,
+          },
+        },
+        guardian: true,
+        billingPlan: true,
+        benefits: { where: { active: true } },
+        _count: { select: { charges: true } },
+      },
+    }),
+    prisma.billingContract.count({ where }),
+  ]);
+
+  return NextResponse.json({
+    contracts,
+    meta: paginationMeta(total, pagination.page, pagination.pageSize),
+  });
 }
 
 export async function POST(request: Request) {
