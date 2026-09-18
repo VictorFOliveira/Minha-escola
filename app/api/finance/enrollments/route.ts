@@ -30,6 +30,7 @@ export async function GET() {
       class: true,
       billingContract: { select: { id: true, status: true } },
     },
+    take: 5000,
   });
 
   return NextResponse.json({
