@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 
-const readRoles = ["ADMIN", "SECRETARY", "TEACHER"];
+const readRoles = ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"];
 const writeRoles = ["ADMIN", "SECRETARY"];
 
 function parseYear(value: unknown) {
