@@ -101,7 +101,7 @@ function statusLabel(status: string) {
   return labels[status] || status;
 }
 
-export function FinanceManager() {
+export function FinanceManager({ canConfigure }: { canConfigure: boolean }) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [asaasConfigured, setAsaasConfigured] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -460,13 +460,15 @@ export function FinanceManager() {
           </p>
         </div>
         <div className="finance-heading-actions">
-          <button
-            className="button button--secondary"
-            type="button"
-            onClick={() => setSettingsOpen((value) => !value)}
-          >
-            Configuração
-          </button>
+          {canConfigure ? (
+            <button
+              className="button button--secondary"
+              type="button"
+              onClick={() => setSettingsOpen((value) => !value)}
+            >
+              Configuração
+            </button>
+          ) : null}
           <button
             className="button button--primary"
             type="button"
@@ -515,7 +517,7 @@ export function FinanceManager() {
             </article>
           </section>
 
-          {settingsOpen && settings ? (
+          {canConfigure && settingsOpen && settings ? (
             <section className="panel">
               <div className="panel-heading">
                 <div>
