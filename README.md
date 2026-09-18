@@ -326,6 +326,12 @@ Detalhes: [Status de produção](docs/PRODUCTION_STATUS.md), [teste de carga](do
 
 ## Estado do produto
 
-As 11 fases planejadas estão implementadas na base do produto.
+As 11 fases planejadas estão implementadas na base do produto, e o pacote técnico passou pelos gates de migrations, testes, build, regressão HTTP, segurança, Docker, backup/restore e carga no ambiente de CI.
 
-O código e os artefatos de produção estão prontos para homologação/VPS, incluindo package-lock, migration baseline, Docker, Caddy/HTTPS, deploy com migrate deploy, smoke test, health monitor e restore drill. Para um go-live real ainda é necessário provisionar a infraestrutura externa e cadastrar seus segredos: VPS/containers, domínio/DNS, banco/bucket/scanner e credenciais opcionais de Sentry, Asaas, Resend e Meta WhatsApp.
+A revisão final do `main` encontrou um bloqueador funcional antes do go-live: a home de `/dashboard` ainda usa `lib/mock-data.ts` para métricas, alunos recentes e atividade. O acesso GUARDIAN nessa mesma tela também contém texto legado de uma fase anterior, embora o Portal do Responsável já esteja implementado.
+
+Por isso, o estado correto neste momento é **release candidate pronto para homologação**, ainda não "produção encerrada".
+
+Além desses ajustes de código, o go-live real depende da infraestrutura externa: VPS/containers, domínio/DNS, PostgreSQL, bucket/scanner, monitoramento, backup e secrets. Sentry, Asaas, Resend e Meta WhatsApp continuam opcionais conforme os recursos ativados.
+
+Veja [Pendências conhecidas](docs/KNOWN_GAPS.md) para o checklist atual.
