@@ -280,6 +280,11 @@ enum PlatformInvoiceStatus {
   REFUNDED
 }
 
+enum BillingInterval {
+  MONTHLY
+  ANNUAL
+}
+
 model School {
   id        String       @id @default(cuid())
   name      String
@@ -1070,6 +1075,7 @@ model SchoolSubscription {
   plan              SaaSPlan           @relation(fields: [planId], references: [id], onDelete: Restrict)
   status            SubscriptionStatus @default(TRIAL)
   provider          PaymentProvider    @default(MANUAL)
+  billingInterval   BillingInterval     @default(MONTHLY)
   externalId        String?
   startedAt         DateTime           @default(now())
   trialEndsAt       DateTime?
