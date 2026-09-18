@@ -385,6 +385,87 @@ export async function resolveCommunicationRecipients(input: {
   return [];
 }
 
+
+
+async function resolveAuthorizationPairs(input: {
+  session: SessionUser;
+  audience: Audience;
+  targetClassId?: string | null;
+  targetEnrollmentId?: string | null;
+  targetGuardianId?: string | null;
+}) {
+  const { session, audience, targetClassId, targetEnrollmentId, targetGuardianId } = input;
+
+  const enrollments = await prisma.enrollment.findMany({
+    where: {
+      status: { in: ["ACTIVE", "PENDING"] },
+      class: {
+        schoolId: session.schoolId,
+        ...(targetClassId ? { id: targetClassId } : {}),
+        ...(session.role === "TEACHER" && session.teacherId
+          ? {
+              classSubjects: {
+                some: { teacherId: session.teacherId },
+              },
+            }
+          : {}),
+      },
+      ...(targetEnrollmentId ? { id: targetEnrollmentId } : {}),
+      ...(targetGuardianId
+        ? {
+            student: {
+              guardians: {
+                some: {
+                  guardianId: targetGuardianId,
+                  guardian: { status: "ACTIVE" },
+                },
+              },
+            },
+          }
+        : {}),
+    },
+    include: {
+      student: {
+        include: {
+          guardians: {
+            where: { guardian: { status: "ACTIVE" } },
+            include: { guardian: true },
+            orderBy: { financialResponsible: "desc" },
+          },
+        },
+      },
+    },
+  });
+
+  return enrollments.flatMap((enrollment) => {
+    let link = targetGuardianId
+      ? enrollment.student.guardians.find(
+          (item) => item.guardianId === targetGuardianId,
+        )
+      : enrollment.student.guardians.find(
+          (item) => item.financialResponsible,
+        ) || enrollment.student.guardians[0];
+
+    if (
+      audience === "INDIVIDUAL_STUDENT" ||
+      audience === "STUDENTS" ||
+      audience === "CLASS_STUDENTS"
+    ) {
+      link =
+        enrollment.student.guardians.find(
+          (item) => item.financialResponsible,
+        ) || enrollment.student.guardians[0];
+    }
+
+    return link
+      ? [{
+          studentId: enrollment.studentId,
+          guardianId: link.guardianId,
+        }]
+      : [];
+  });
+}
+
 export async function publishCommunication(
   communicationId: string,
   session: SessionUser,
@@ -465,6 +546,30 @@ export async function publishCommunication(
           },
         ],
       });
+    }
+
+    if (communication.requiresAuthorization) {
+      const authorizationPairs = await resolveAuthorizationPairs({
+        session,
+        audience: communication.audience,
+        targetClassId: communication.targetClassId,
+        targetEnrollmentId: communication.targetEnrollmentId,
+        targetGuardianId: communication.targetGuardianId,
+      });
+
+      await tx.authorizationRequest.deleteMany({
+        where: { communicationId },
+      });
+
+      for (const pair of authorizationPairs) {
+        await tx.authorizationRequest.create({
+          data: {
+            communicationId,
+            studentId: pair.studentId,
+            guardianId: pair.guardianId,
+          },
+        });
+      }
     }
 
     await tx.communication.update({
