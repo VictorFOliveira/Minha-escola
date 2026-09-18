@@ -14,7 +14,7 @@ export type SessionUser = {
   name: string;
   email: string;
   role: AppRole;
-  studentId?: string | null;
+  enrollmentId?: string | null;
   guardianId?: string | null;
   teacherId?: string | null;
 };
@@ -85,7 +85,7 @@ export async function getSession(): Promise<SessionPayload | null> {
 
     if (!user || !user.active || !isAppRole(user.role)) return null;
 
-    if (user.role === "STUDENT" && !user.studentId) return null;
+    if (user.role === "STUDENT" && !user.enrollmentId) return null;
     if (user.role === "GUARDIAN" && !user.guardianId) return null;
     if (user.role === "TEACHER" && !user.teacherId) return null;
 
@@ -97,7 +97,7 @@ export async function getSession(): Promise<SessionPayload | null> {
       name: user.name,
       email: user.email,
       role: user.role,
-      studentId: user.studentId,
+      enrollmentId: user.enrollmentId,
       guardianId: user.guardianId,
       teacherId: user.teacherId,
     };
