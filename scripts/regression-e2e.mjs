@@ -448,6 +448,136 @@ async function main() {
       "invalid enrollment start date",
     );
 
+    const sameYearStudent = await prisma.student.create({
+      data: {
+        schoolId: schoolA.id,
+        name: "Aluno Corrida Mesmo Ano",
+        registration: "SAME-YEAR-" + suffix,
+        status: "ACTIVE",
+      },
+    });
+    await prisma.studentGuardian.create({
+      data: {
+        studentId: sameYearStudent.id,
+        guardianId: guardianData.guardian.id,
+        relationship: "Responsável",
+        financialResponsible: true,
+      },
+    });
+    const secondSameYearClass = await prisma.classGroup.create({
+      data: {
+        schoolId: schoolA.id,
+        name: "1B Regression",
+        gradeLevel: "1º ano",
+        shift: "Tarde",
+        schoolYear: 2026,
+        capacity: 30,
+      },
+    });
+
+    const sameYearRace = await Promise.all([
+      authed(secretaryCookie, "/api/enrollments", {
+        method: "POST",
+        headers: { "Idempotency-Key": "same-year-a-" + suffix },
+        body: JSON.stringify({
+          studentId: sameYearStudent.id,
+          classId: classData.class.id,
+          status: "ACTIVE",
+          startedAt: "2026-01-22",
+        }),
+      }),
+      authed(secretaryCookie, "/api/enrollments", {
+        method: "POST",
+        headers: { "Idempotency-Key": "same-year-b-" + suffix },
+        body: JSON.stringify({
+          studentId: sameYearStudent.id,
+          classId: secondSameYearClass.id,
+          status: "ACTIVE",
+          startedAt: "2026-01-22",
+        }),
+      }),
+    ]);
+    assert.deepEqual(
+      sameYearRace.map((item) => item.response.status).sort((a, b) => a - b),
+      [201, 409],
+      "duas turmas no mesmo ano concorrendo devem aceitar apenas uma matrícula",
+    );
+    assert.equal(
+      await prisma.enrollment.count({
+        where: {
+          studentId: sameYearStudent.id,
+          status: { in: ["ACTIVE", "PENDING"] },
+          class: {
+            schoolId: schoolA.id,
+            schoolYear: 2026,
+          },
+        },
+      }),
+      1,
+    );
+
+    const capacityClass = await prisma.classGroup.create({
+      data: {
+        schoolId: schoolA.id,
+        name: "Turma Capacidade 1",
+        gradeLevel: "2º ano",
+        shift: "Manhã",
+        schoolYear: 2030,
+        capacity: 1,
+      },
+    });
+    const capacityStudents = await Promise.all(
+      ["A", "B"].map((label) =>
+        prisma.student.create({
+          data: {
+            schoolId: schoolA.id,
+            name: "Aluno Capacidade " + label,
+            registration: "CAP-" + label + "-" + suffix,
+            status: "ACTIVE",
+          },
+        }),
+      ),
+    );
+    await prisma.studentGuardian.createMany({
+      data: capacityStudents.map((item) => ({
+        studentId: item.id,
+        guardianId: guardianData.guardian.id,
+        relationship: "Responsável",
+        financialResponsible: true,
+      })),
+    });
+
+    const capacityRace = await Promise.all(
+      capacityStudents.map((item, index) =>
+        authed(secretaryCookie, "/api/enrollments", {
+          method: "POST",
+          headers: {
+            "Idempotency-Key": "capacity-" + index + "-" + suffix,
+          },
+          body: JSON.stringify({
+            studentId: item.id,
+            classId: capacityClass.id,
+            status: "ACTIVE",
+            startedAt: "2030-01-20",
+          }),
+        }),
+      ),
+    );
+    assert.deepEqual(
+      capacityRace.map((item) => item.response.status).sort((a, b) => a - b),
+      [201, 409],
+      "turma com capacidade 1 nunca pode aceitar duas matrículas concorrentes",
+    );
+    assert.equal(
+      await prisma.enrollment.count({
+        where: {
+          classId: capacityClass.id,
+          status: { in: ["ACTIVE", "PENDING"] },
+        },
+      }),
+      1,
+    );
+
     const foreignClass = await prisma.classGroup.create({
       data: {
         schoolId: schoolB.id,
