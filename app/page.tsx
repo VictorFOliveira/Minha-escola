@@ -7,7 +7,7 @@ export default function HomePage() {
             <span className="brand-mark">ME</span>
             <span>
               <strong>Minha Escola</strong>
-              <small>Gestão escolar</small>
+              <small>SaaS de gestão escolar</small>
             </span>
           </a>
           <div className="landing-links">
@@ -15,25 +15,26 @@ export default function HomePage() {
             <a href="#modulos">Módulos</a>
             <a href="#implantacao">Implantação</a>
           </div>
-          <a className="button button--ghost" href="/dashboard">Entrar no painel</a>
+          <a className="button button--ghost" href="/login">Entrar no sistema</a>
         </nav>
 
         <div className="hero-grid container">
           <div className="hero-copy">
-            <span className="pill">Gestão escolar sem planilhas espalhadas</span>
+            <span className="pill">NOVO SaaS • Minha Escola</span>
             <h1>Toda a escola em um único lugar.</h1>
             <p>
-              Matrículas, turmas, frequência, notas, financeiro e comunicação
-              em uma plataforma simples para secretaria, professores e direção.
+              Uma plataforma SaaS para escolas centralizarem alunos, responsáveis,
+              professores, funcionários, turmas, frequência, financeiro e comunicação.
             </p>
             <div className="hero-actions">
-              <a className="button button--primary" href="/dashboard">Explorar demonstração</a>
-              <a className="button button--secondary" href="#recursos">Ver recursos</a>
+              <a className="button button--primary" href="/login">Acessar Minha Escola</a>
+              <a className="button button--secondary" href="#recursos">Conhecer o SaaS</a>
             </div>
             <div className="hero-trust">
-              <span>✓ Interface responsiva</span>
-              <span>✓ Preparado para PostgreSQL</span>
-              <span>✓ Base multi-escola</span>
+              <span>✓ Multi-escola</span>
+              <span>✓ Acesso por perfil</span>
+              <span>✓ PostgreSQL</span>
+              <span>✓ Evolução contínua</span>
             </div>
           </div>
 
@@ -66,18 +67,18 @@ export default function HomePage() {
 
       <section className="section container" id="recursos">
         <div className="section-heading">
-          <span className="eyebrow">PRIMEIRA FASE</span>
-          <h2>A base para administrar a rotina escolar</h2>
-          <p>Os módulos essenciais já organizados para evoluir para uma operação completa.</p>
+          <span className="eyebrow">SAAS DE GESTÃO ESCOLAR</span>
+          <h2>Da secretaria ao financeiro, com uma única base de dados</h2>
+          <p>O Minha Escola está sendo construído por fases, com módulos integrados desde a arquitetura.</p>
         </div>
         <div className="feature-grid">
           {[
-            ["01", "Alunos e matrículas", "Cadastro centralizado, situação da matrícula, turma e turno."],
-            ["02", "Turmas", "Organização de séries, salas, professores e capacidade das turmas."],
-            ["03", "Frequência", "Visão diária de presença, faltas e percentual por turma."],
-            ["04", "Financeiro", "Indicadores de recebimento, mensalidades e inadimplência."],
-            ["05", "Desempenho", "Estrutura preparada para notas, avaliações e boletins."],
-            ["06", "Comunicação", "Base para avisos, responsáveis e notificações futuras."],
+            ["01", "Alunos e responsáveis", "Cadastros reais, contatos, documentos e vínculos familiares."],
+            ["02", "Professores e equipe", "Gestão de docentes, funcionários, funções e situação cadastral."],
+            ["03", "Turmas e frequência", "Organização acadêmica e acompanhamento diário."],
+            ["04", "Financeiro", "Base para mensalidades, recebimentos e inadimplência."],
+            ["05", "Acesso por perfil", "Administrador, secretaria, professor, financeiro e responsável."],
+            ["06", "Multi-escola", "Arquitetura SaaS preparada para atender várias instituições."],
           ].map(([number, title, description]) => (
             <article className="feature-card" key={title}>
               <span>{number}</span>
@@ -91,31 +92,31 @@ export default function HomePage() {
       <section className="section section--soft" id="modulos">
         <div className="container split-section">
           <div>
-            <span className="eyebrow">ARQUITETURA</span>
-            <h2>Pronto para crescer sem refazer tudo depois.</h2>
+            <span className="eyebrow">EM CONSTRUÇÃO CONTÍNUA</span>
+            <h2>Um SaaS que cresce sem precisar recomeçar.</h2>
           </div>
           <div className="check-list">
-            <p><strong>Next.js + TypeScript</strong><span>Frontend e API no mesmo projeto.</span></p>
-            <p><strong>PostgreSQL + Prisma</strong><span>Modelo relacional preparado para produção.</span></p>
-            <p><strong>Multi-escola</strong><span>Dados associados à instituição desde a modelagem inicial.</span></p>
-            <p><strong>CI no GitHub</strong><span>Build e validação automática a cada alteração.</span></p>
+            <p><strong>Fase 1 concluída</strong><span>Fundação, dashboard, API e estrutura multi-escola.</span></p>
+            <p><strong>Fase 2 concluída</strong><span>Login, sessões, recuperação e controle por perfil.</span></p>
+            <p><strong>Fase 3 em evolução</strong><span>Cadastros reais de pessoas e da instituição.</span></p>
+            <p><strong>Próximas fases</strong><span>Matrículas, acadêmico, financeiro completo, portal e documentos.</span></p>
           </div>
         </div>
       </section>
 
       <section className="cta-section container" id="implantacao">
         <div>
-          <span className="eyebrow eyebrow--light">MINHA ESCOLA</span>
-          <h2>O primeiro núcleo do sistema já está de pé.</h2>
-          <p>Acesse o painel demonstrativo para navegar pelos módulos iniciais.</p>
+          <span className="eyebrow eyebrow--light">MINHA ESCOLA SaaS</span>
+          <h2>A gestão escolar saindo da demonstração e virando operação real.</h2>
+          <p>Cadastros, autenticação e dados por instituição já fazem parte da base do produto.</p>
         </div>
-        <a className="button button--light" href="/dashboard">Abrir painel →</a>
+        <a className="button button--light" href="/login">Entrar no sistema →</a>
       </section>
 
       <footer className="footer container">
         <div className="brand">
           <span className="brand-mark">ME</span>
-          <strong>Minha Escola</strong>
+          <strong>Minha Escola SaaS</strong>
         </div>
         <span>© 2026 Minha Escola</span>
       </footer>
