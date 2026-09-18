@@ -17,7 +17,7 @@ const navItems: Array<{
   { href: "/dashboard/turmas", label: "Turmas", icon: "▦", roles: ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"] },
   { href: "/dashboard/academico", label: "Acadêmico", icon: "▤", roles: ["ADMIN", "COORDINATOR", "SECRETARY"] },
   { href: "/dashboard/avaliacoes", label: "Avaliações", icon: "✎", roles: ["ADMIN", "COORDINATOR", "TEACHER"] },
-  { href: "/dashboard/frequencia", label: "Frequência", icon: "✓", roles: ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"] },
+  { href: "/dashboard/diario", label: "Diário & Frequência", icon: "✓", roles: ["ADMIN", "COORDINATOR", "TEACHER"] },
   { href: "/dashboard/financeiro", label: "Financeiro", icon: "$", roles: ["ADMIN", "FINANCE"] },
   { href: "/dashboard/usuarios", label: "Usuários", icon: "⚙", roles: ["ADMIN"] },
   { href: "/dashboard/escola", label: "Escola", icon: "⌂", roles: ["ADMIN"] },
