@@ -326,12 +326,10 @@ Detalhes: [Status de produção](docs/PRODUCTION_STATUS.md), [teste de carga](do
 
 ## Estado do produto
 
-As 11 fases planejadas estão implementadas na base do produto, e o pacote técnico passou pelos gates de migrations, testes, build, regressão HTTP, segurança, Docker, backup/restore e carga no ambiente de CI.
+As 11 fases planejadas estão implementadas e o dashboard autenticado já utiliza dados reais do PostgreSQL, respeitando tenant e perfil. Aluno e responsável são direcionados aos seus portais próprios, e a antiga camada `lib/mock-data.ts` foi removida.
 
-A revisão final do `main` encontrou um bloqueador funcional antes do go-live: a home de `/dashboard` ainda usa `lib/mock-data.ts` para métricas, alunos recentes e atividade. O acesso GUARDIAN nessa mesma tela também contém texto legado de uma fase anterior, embora o Portal do Responsável já esteja implementado.
+O pacote técnico passou pelos gates de migrations, testes, build, regressão HTTP, segurança, Docker, backup/restore e carga no ambiente de CI.
 
-Por isso, o estado correto neste momento é **release candidate pronto para homologação**, ainda não "produção encerrada".
+O estado atual é **pronto para homologação final**. O go-live depende apenas da validação no ambiente real: VPS/containers, domínio/DNS, PostgreSQL, bucket/scanner, secrets, jobs, monitoramento, backup e novo teste de carga na infraestrutura escolhida.
 
-Além desses ajustes de código, o go-live real depende da infraestrutura externa: VPS/containers, domínio/DNS, PostgreSQL, bucket/scanner, monitoramento, backup e secrets. Sentry, Asaas, Resend e Meta WhatsApp continuam opcionais conforme os recursos ativados.
-
-Veja [Pendências conhecidas](docs/KNOWN_GAPS.md) para o checklist atual.
+Veja [Pendências conhecidas](docs/KNOWN_GAPS.md) para o checklist operacional restante.
