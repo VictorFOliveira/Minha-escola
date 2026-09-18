@@ -28,7 +28,7 @@ Plataforma SaaS multi-tenant de gestão escolar para centralizar operação admi
 - seed do primeiro administrador;
 - endpoint de alunos protegido.
 
-O fluxo de recuperação funciona em desenvolvimento mostrando o link diretamente. Para produção ainda será necessário conectar um provedor de e-mail para entregar esse link ao usuário.
+O fluxo de recuperação usa token aleatório armazenado em hash e, em produção, envia o link por e-mail através do Resend quando o provider está configurado. O token de debug permanece restrito a ambientes não produtivos.
 
 ## Stack
 
@@ -289,7 +289,7 @@ Antes da regressão ponta a ponta, a base recebeu uma camada adicional de produ�
 - Docker, health/readiness, jobs, backup/restore, Dependabot e CodeQL;
 - CI com PostgreSQL real e testes de isolamento multi-tenant.
 
-A regressão ponta a ponta completa continua sendo o próximo gate depois que CI, build e artefatos de migration estiverem verdes.
+A regressão HTTP ponta a ponta foi executada com Next.js compilado e PostgreSQL real. O projeto também possui teste de carga com 5.000 alunos, 3.000 cobranças e 600 requisições HTTP mistas, incluindo rajada de 100 concorrentes, sem falhas no cenário de referência.
 
 ## Documentação técnica
 
@@ -299,9 +299,15 @@ A regressão ponta a ponta completa continua sendo o próximo gate depois que CI
 - [Fase 9 — Comunicação](docs/FASE_9_COMUNICACAO.md)
 - [Fase 10 — Documentos](docs/FASE_10_DOCUMENTOS.md)
 - [Fase 11 — SaaS e produção](docs/FASE_11_SAAS_PRODUCAO.md)
+- [Deploy em VPS](docs/VPS_DEPLOYMENT.md)
+- [Homologação](docs/HOMOLOGATION.md)
+- [Status de produção](docs/PRODUCTION_STATUS.md)
+- [Resultado do teste de carga](docs/LOAD_TEST_RESULTS_600.md)
+- [Runbook de produção](docs/PRODUCTION_RUNBOOK.md)
+- [Checklist de release](docs/RELEASE_CHECKLIST.md)
 
 ## Estado do produto
 
 As 11 fases planejadas estão implementadas na base do produto.
 
-Para uma implantação real ainda é necessário provisionar infraestrutura e segredos do ambiente: PostgreSQL de produção, domínio, TLS, backups gerenciados, observabilidade e, quando desejado, credenciais de Asaas/e-mail/WhatsApp. Esses itens não são ativados automaticamente no repositório.
+O código e os artefatos de produção estão prontos para homologação/VPS, incluindo package-lock, migration baseline, Docker, Caddy/HTTPS, deploy com migrate deploy, smoke test, health monitor e restore drill. Para um go-live real ainda é necessário provisionar a infraestrutura externa e cadastrar seus segredos: VPS/containers, domínio/DNS, banco/bucket/scanner e credenciais opcionais de Sentry, Asaas, Resend e Meta WhatsApp.
