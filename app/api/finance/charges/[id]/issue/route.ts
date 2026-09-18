@@ -4,6 +4,8 @@ import { getSession } from "@/lib/session";
 import {
   createAsaasCustomer,
   createAsaasPayment,
+  findAsaasCustomerByExternalReference,
+  findAsaasPaymentByExternalReference,
   getAsaasPixQrCode,
 } from "@/lib/asaas";
 import { roundMoney } from "@/lib/finance";
@@ -72,6 +74,13 @@ export async function POST(request: Request, context: Context) {
     );
   }
 
+  if (!charge.guardian.document) {
+    return NextResponse.json(
+      { error: "O responsável financeiro precisa ter CPF/CNPJ cadastrado para emissão no Asaas." },
+      { status: 409 },
+    );
+  }
+
   if (charge.externalId && charge.provider === "ASAAS") {
     return NextResponse.json({
       charge,
@@ -94,20 +103,24 @@ export async function POST(request: Request, context: Context) {
   });
 
   if (!customer) {
-    const created = await createAsaasCustomer({
-      name: charge.guardian.name,
-      cpfCnpj: charge.guardian.document,
-      mobilePhone: charge.guardian.phone,
-      email: charge.guardian.email,
-      externalReference: charge.guardian.id,
-    });
+    const remoteCustomer =
+      (await findAsaasCustomerByExternalReference(
+        charge.guardian.id,
+      ).catch(() => null)) ||
+      (await createAsaasCustomer({
+        name: charge.guardian.name,
+        cpfCnpj: charge.guardian.document,
+        mobilePhone: charge.guardian.phone,
+        email: charge.guardian.email,
+        externalReference: charge.guardian.id,
+      }));
 
     customer = await prisma.paymentCustomer.create({
       data: {
         schoolId: session.schoolId,
         guardianId: charge.guardian.id,
         provider: "ASAAS",
-        externalId: created.id,
+        externalId: remoteCustomer.id,
       },
     });
   }
@@ -120,14 +133,16 @@ export async function POST(request: Request, context: Context) {
     return NextResponse.json({ error: "A cobrança não possui saldo em aberto." }, { status: 409 });
   }
 
-  const payment = await createAsaasPayment({
-    customer: customer.externalId,
-    billingType,
-    value: remaining,
-    dueDate: charge.dueDate.toISOString().slice(0, 10),
-    description: charge.description,
-    externalReference: charge.id,
-  });
+  const payment =
+    (await findAsaasPaymentByExternalReference(charge.id).catch(() => null)) ||
+    (await createAsaasPayment({
+      customer: customer.externalId,
+      billingType,
+      value: remaining,
+      dueDate: charge.dueDate.toISOString().slice(0, 10),
+      description: charge.description,
+      externalReference: charge.id,
+    }));
 
   let pixCopyPaste: string | null = null;
   let pixQrCodeBase64: string | null = null;
