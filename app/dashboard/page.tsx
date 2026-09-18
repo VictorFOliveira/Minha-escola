@@ -13,6 +13,10 @@ export default async function DashboardPage({
   const visibleMetrics =
     session.role === "ADMIN"
       ? metrics
+      : session.role === "COORDINATOR"
+        ? metrics.filter((metric) =>
+            ["Turmas", "Frequência média"].includes(metric.label),
+          )
       : session.role === "SECRETARY"
         ? metrics.filter((metric) =>
             ["Alunos ativos", "Turmas", "Frequência média"].includes(metric.label),
@@ -25,7 +29,7 @@ export default async function DashboardPage({
             ? metrics.filter((metric) => metric.label === "Mensalidades em dia")
             : [];
 
-  const showAttendance = ["ADMIN", "SECRETARY", "TEACHER"].includes(session.role);
+  const showAttendance = ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"].includes(session.role);
   const showStudents = ["ADMIN", "SECRETARY"].includes(session.role);
   const visibleActivity =
     session.role === "FINANCE"
