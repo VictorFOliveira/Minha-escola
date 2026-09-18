@@ -66,6 +66,9 @@ export async function POST(request: Request) {
     typeof body?.planId === "string" && body.planId
       ? body.planId
       : null;
+  const provider = body?.provider === "ASAAS" ? "ASAAS" : "MANUAL";
+  const billingInterval =
+    body?.billingInterval === "ANNUAL" ? "ANNUAL" : "MONTHLY";
 
   if (
     !name ||
@@ -147,6 +150,9 @@ export async function POST(request: Request) {
           trialEndsAt,
           currentPeriodStart: now,
           currentPeriodEnd: trialEndsAt,
+          nextBillingAt: trialEndsAt,
+          provider,
+          billingInterval,
         },
       });
     }
@@ -164,6 +170,8 @@ export async function POST(request: Request) {
       slug,
       adminEmail,
       planId,
+      provider,
+      billingInterval,
     },
   }).catch(() => null);
 
