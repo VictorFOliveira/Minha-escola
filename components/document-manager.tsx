@@ -2,7 +2,14 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
-type Role = "ADMIN" | "COORDINATOR" | "SECRETARY" | "FINANCE";
+type Role =
+  | "ADMIN"
+  | "COORDINATOR"
+  | "SECRETARY"
+  | "TEACHER"
+  | "FINANCE"
+  | "STUDENT"
+  | "GUARDIAN";
 
 type EnrollmentOption = {
   id: string;
