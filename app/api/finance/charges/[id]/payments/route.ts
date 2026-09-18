@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { getChargeStatus, roundMoney } from "@/lib/finance";
+import {
+  idempotencyHash,
+  readIdempotency,
+  saveIdempotency,
+} from "@/lib/idempotency";
+import { emitSchoolEvent } from "@/lib/outgoing-webhooks";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -13,6 +19,21 @@ export async function POST(request: Request, context: Context) {
   }
 
   const { id } = await context.params;
+  const operation = "payment.manual:" + id;
+  const previous = await readIdempotency(
+    request,
+    session.schoolId,
+    operation,
+  ).catch(() => null);
+
+  if (previous?.responseBody && previous.responseStatus) {
+    return NextResponse.json(previous.responseBody, {
+      status: previous.responseStatus,
+      headers: { "Idempotent-Replay": "true" },
+    });
+  }
+
+  const keyHash = idempotencyHash(request, session.schoolId, operation);
   const charge = await prisma.charge.findFirst({
     where: { id, schoolId: session.schoolId },
   });
@@ -100,6 +121,28 @@ export async function POST(request: Request, context: Context) {
 
     return { payment, charge: updatedCharge };
   });
+
+  await Promise.all([
+    saveIdempotency({
+      schoolId: session.schoolId,
+      operation,
+      keyHash,
+      responseStatus: 201,
+      responseBody: result,
+      resourceId: result.payment.id,
+    }).catch(() => null),
+    emitSchoolEvent({
+      schoolId: session.schoolId,
+      eventType: "payment.received",
+      payload: {
+        paymentId: result.payment.id,
+        chargeId: result.charge.id,
+        amount: Number(result.payment.amount),
+        method: result.payment.method,
+        paidAt: result.payment.paidAt,
+      },
+    }).catch(() => null),
+  ]);
 
   return NextResponse.json(result, { status: 201 });
 }
