@@ -7,10 +7,15 @@ import {
   calculateDiscount,
   roundMoney,
 } from "@/lib/finance";
+import {
+  idempotencyHash,
+  readIdempotency,
+  saveIdempotency,
+} from "@/lib/idempotency";
 
 type Context = { params: Promise<{ id: string }> };
 
-export async function POST(_: Request, context: Context) {
+export async function POST(request: Request, context: Context) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   if (!["ADMIN", "FINANCE"].includes(session.role)) {
@@ -18,6 +23,25 @@ export async function POST(_: Request, context: Context) {
   }
 
   const { id } = await context.params;
+  const operation = "billing.generate:" + id;
+  const previous = await readIdempotency(
+    request,
+    session.schoolId,
+    operation,
+  ).catch(() => null);
+
+  if (previous?.responseBody && previous.responseStatus) {
+    return NextResponse.json(previous.responseBody, {
+      status: previous.responseStatus,
+      headers: { "Idempotent-Replay": "true" },
+    });
+  }
+
+  const keyHash = idempotencyHash(
+    request,
+    session.schoolId,
+    operation,
+  );
   const contract = await prisma.billingContract.findFirst({
     where: {
       id,
@@ -108,8 +132,19 @@ export async function POST(_: Request, context: Context) {
     await notifyBillingSchedule({ session, contractId: contract.id }).catch(() => null);
   }
 
-  return NextResponse.json({
+  const responseBody = {
     created: createData.length,
     charges,
-  });
+  };
+
+  await saveIdempotency({
+    schoolId: session.schoolId,
+    operation,
+    keyHash,
+    responseStatus: 200,
+    responseBody,
+    resourceId: contract.id,
+  }).catch(() => null);
+
+  return NextResponse.json(responseBody);
 }
