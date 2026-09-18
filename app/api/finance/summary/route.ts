@@ -10,7 +10,10 @@ export async function GET() {
   }
 
   const charges = await prisma.charge.findMany({
-    where: { schoolId: session.schoolId, status: { not: "CANCELLED" } },
+    where: {
+      schoolId: session.schoolId,
+      status: { notIn: ["CANCELLED", "REFUNDED"] },
+    },
     select: {
       amount: true,
       paidAmount: true,
