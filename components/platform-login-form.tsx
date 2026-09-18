@@ -28,6 +28,19 @@ export function PlatformLoginForm() {
         return;
       }
 
+      if (data.mfaRequired && data.challengeToken) {
+        sessionStorage.setItem(
+          "mfaChallenge",
+          JSON.stringify({
+            challengeToken: data.challengeToken,
+            mfaMode: data.mfaMode,
+            platform: true,
+          }),
+        );
+        window.location.href = "/superadmin/mfa";
+        return;
+      }
+
       window.location.href = data.homePath || "/superadmin";
     } catch {
       setError("Não foi possível conectar ao servidor.");
