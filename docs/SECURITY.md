@@ -34,7 +34,11 @@ Regras críticas são aplicadas no servidor:
 - confirmação do objeto após upload;
 - download por rota autenticada;
 - checagem de tenant e destinatário;
-- HTML/SVG não são aceitos no fluxo de upload.
+- HTML/SVG não são aceitos no fluxo de upload;
+- em produção, malware scan é obrigatório por padrão;
+- arquivo permanece indisponível enquanto o scan está pendente;
+- resultado infectado remove o objeto do storage;
+- callback do scanner exige token dedicado e fica auditado.
 
 ## Documentos
 
