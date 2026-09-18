@@ -1,0 +1,39 @@
+name: Production ops validation
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  ops:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate shell scripts
+        run: |
+          bash -n scripts/deploy-production.sh
+          bash -n scripts/smoke-production.sh
+          bash -n scripts/backup-postgres.sh
+          bash -n scripts/restore-postgres.sh
+
+      - name: Validate production compose
+        env:
+          POSTGRES_PASSWORD: ci-postgres-password
+        run: |
+          cp .env.production.example .env.production
+          docker compose             --env-file .env.production             -f docker-compose.production.yml             config >/tmp/compose.rendered.yml
+          test -s /tmp/compose.rendered.yml
+
+      - name: Validate Caddyfile
+        run: |
+          docker run --rm             -e APP_DOMAIN=school.example.com             -e ACME_EMAIL=infra@example.com             -v "$PWD/ops/Caddyfile:/etc/caddy/Caddyfile:ro"             caddy:2-alpine             caddy validate --config /etc/caddy/Caddyfile
+
+      - name: Build production container
+        run: docker build -t minha-escola:validation .
