@@ -33,7 +33,8 @@ type InboxItem = {
     attachments: Array<{
       id: string;
       name: string;
-      url: string;
+      url: string | null;
+      fileAssetId: string | null;
       mimeType: string | null;
     }>;
   };
@@ -58,7 +59,8 @@ type Authorization = {
     attachments: Array<{
       id: string;
       name: string;
-      url: string;
+      url: string | null;
+      fileAssetId: string | null;
     }>;
   };
 };
@@ -255,7 +257,11 @@ export function CommunicationInbox({
                 {authorization.communication.attachments.length ? (
                   <div className="communication-attachments">
                     {authorization.communication.attachments.map((attachment) => (
-                      <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer">
+                      <a key={attachment.id} href={
+                        attachment.fileAssetId
+                          ? "/api/files/" + attachment.fileAssetId
+                          : attachment.url || "#"
+                      } target="_blank" rel="noreferrer">
                         ↗ {attachment.name}
                       </a>
                     ))}
@@ -397,7 +403,11 @@ export function CommunicationInbox({
                           (attachment) => (
                             <a
                               key={attachment.id}
-                              href={attachment.url}
+                              href={
+                        attachment.fileAssetId
+                          ? "/api/files/" + attachment.fileAssetId
+                          : attachment.url || "#"
+                      }
                               target="_blank"
                               rel="noreferrer"
                             >
