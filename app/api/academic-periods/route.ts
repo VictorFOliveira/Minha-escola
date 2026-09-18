@@ -36,6 +36,7 @@ export async function POST(request: Request) {
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   const startDate = body?.startDate ? new Date(body.startDate) : null;
   const endDate = body?.endDate ? new Date(body.endDate) : null;
+  const weight = Number(body?.weight ?? 1);
 
   if (
     !Number.isInteger(schoolYear) ||
@@ -47,7 +48,8 @@ export async function POST(request: Request) {
     !startDate ||
     !endDate ||
     Number.isNaN(startDate.getTime()) ||
-    Number.isNaN(endDate.getTime())
+    Number.isNaN(endDate.getTime()) ||
+    !(weight > 0)
   ) {
     return NextResponse.json({ error: "Preencha corretamente ano, ordem, nome e datas do período." }, { status: 400 });
   }
@@ -78,6 +80,7 @@ export async function POST(request: Request) {
       name,
       startDate,
       endDate,
+      weight,
       status: body?.status === "ACTIVE" || body?.status === "CLOSED" ? body.status : "PLANNED",
     },
   });
