@@ -11,7 +11,10 @@ export async function PATCH(request: Request, context: Context) {
   if (!allowedRoles.includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
 
   const { id } = await context.params;
-  const current = await prisma.guardian.findFirst({ where: { id, schoolId: session.schoolId } });
+  const current = await prisma.guardian.findFirst({
+    where: { id, schoolId: session.schoolId },
+    include: { _count: { select: { students: true } } },
+  });
   if (!current) return NextResponse.json({ error: "Responsável não encontrado." }, { status: 404 });
 
   const body = await request.json().catch(() => null);
@@ -34,6 +37,13 @@ export async function DELETE(_: Request, context: Context) {
   const { id } = await context.params;
   const current = await prisma.guardian.findFirst({ where: { id, schoolId: session.schoolId } });
   if (!current) return NextResponse.json({ error: "Responsável não encontrado." }, { status: 404 });
+
+  if (current._count.students > 0) {
+    return NextResponse.json(
+      { error: "Este responsável está vinculado a aluno(s). Remova ou transfira os vínculos antes da exclusão." },
+      { status: 409 },
+    );
+  }
 
   await prisma.guardian.delete({ where: { id } });
   return NextResponse.json({ ok: true });
