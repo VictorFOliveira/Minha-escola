@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     }),
     prisma.classGroup.findFirst({
       where: { id: classId, schoolId: session.schoolId },
-      include: { _count: { select: { enrollments: true } } },
+      include: { _count: { select: { enrollments: { where: { status: { in: ["ACTIVE", "PENDING"] } } } } } },
     }),
   ]);
 
