@@ -1,6 +1,6 @@
 import { LogoutButton } from "@/components/logout-button";
 import { ROLE_LABELS, type AppRole } from "@/lib/permissions";
-import type { SessionUser } from "@/lib/session";
+import type { SessionPayload } from "@/lib/session";
 
 const navItems: Array<{
   href: string;
@@ -45,7 +45,7 @@ export function DashboardShell({
   user,
 }: {
   children: React.ReactNode;
-  user: SessionUser;
+  user: SessionPayload;
 }) {
   const allowedItems = navItems.filter((item) => item.roles.includes(user.role));
   const canCreateStudent = user.role === "ADMIN" || user.role === "SECRETARY";
@@ -90,6 +90,19 @@ export function DashboardShell({
       </aside>
 
       <main className="dashboard-main">
+        {user.impersonatedByPlatformAdminId ? (
+          <div className="support-session-banner" role="status">
+            <div>
+              <strong>MODO SUPORTE ATIVO</strong>
+              <span>{user.supportReason || "Sessão iniciada pelo Superadmin."}</span>
+            </div>
+            <form action="/api/support/stop" method="post">
+              <button className="button button--secondary button--small">
+                Encerrar suporte
+              </button>
+            </form>
+          </div>
+        ) : null}
         <header className="dashboard-topbar">
           <div>
             <p className="eyebrow">{user.schoolName.toUpperCase()}</p>
