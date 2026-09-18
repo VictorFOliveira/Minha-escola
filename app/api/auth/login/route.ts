@@ -4,6 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
 import { homePathForRole, isAppRole } from "@/lib/permissions";
 import { auditUserAction } from "@/lib/audit";
+import {
+  checkRateLimit,
+  clearRateLimit,
+  requestFingerprint,
+} from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -12,6 +17,38 @@ export async function POST(request: Request) {
 
   if (!email || !password) {
     return NextResponse.json({ error: "Informe e-mail e senha." }, { status: 400 });
+  }
+
+  const fingerprint = requestFingerprint(request);
+  const [ipThrottle, accountThrottle] = await Promise.all([
+    checkRateLimit({
+      action: "LOGIN_IP",
+      key: fingerprint,
+      limit: 20,
+      windowMs: 15 * 60 * 1000,
+      blockMs: 30 * 60 * 1000,
+    }),
+    checkRateLimit({
+      action: "LOGIN_ACCOUNT",
+      key: email,
+      limit: 10,
+      windowMs: 15 * 60 * 1000,
+      blockMs: 30 * 60 * 1000,
+    }),
+  ]);
+
+  if (!ipThrottle.allowed || !accountThrottle.allowed) {
+    const retryAfter = Math.max(
+      ipThrottle.retryAfterSeconds,
+      accountThrottle.retryAfterSeconds,
+    );
+    return NextResponse.json(
+      { error: "Muitas tentativas. Tente novamente mais tarde." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(retryAfter) },
+      },
+    );
   }
 
   const user = await prisma.user.findUnique({
@@ -91,10 +128,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "E-mail ou senha inválidos." }, { status: 401 });
   }
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lastLoginAt: new Date() },
-  });
+  await Promise.all([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    }),
+    clearRateLimit("LOGIN_ACCOUNT", email),
+  ]);
 
   await auditUserAction({
     schoolId: user.schoolId,
