@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 export type SchoolDocumentKind =
   | "ENROLLMENT_DECLARATION"
@@ -458,6 +459,10 @@ ${item.subjectResults
     issuerName: issuer.name,
   });
 
+  const jsonSnapshot = JSON.parse(
+    JSON.stringify(snapshot),
+  ) as Prisma.InputJsonValue;
+
   return {
     data: {
       schoolId: input.schoolId,
@@ -469,7 +474,7 @@ ${item.subjectResults
       chargeId,
       issuedByUserId: input.issuedByUserId,
       verificationCode,
-      snapshot,
+      snapshot: jsonSnapshot,
       renderedHtml,
       issuedAt,
     },
