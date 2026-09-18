@@ -59,6 +59,20 @@ export async function POST(request: Request) {
     auditLogsDeleted += deleted.count;
   }
 
+  const [expiredIdempotency, expiredPasswordResets] = await Promise.all([
+    prisma.idempotencyRecord.deleteMany({
+      where: { expiresAt: { lt: now } },
+    }),
+    prisma.passwordResetToken.deleteMany({
+      where: {
+        OR: [
+          { expiresAt: { lt: now } },
+          { usedAt: { not: null } },
+        ],
+      },
+    }),
+  ]);
+
   await prisma.securityThrottle.deleteMany({
     where: {
       updatedAt: {
@@ -253,6 +267,8 @@ export async function POST(request: Request) {
     communicationDeliveries: deliveryResult,
     auditLogsDeleted,
     staleUploadsDeleted: staleUploads.length,
+    expiredIdempotencyDeleted: expiredIdempotency.count,
+    expiredPasswordResetsDeleted: expiredPasswordResets.count,
   };
   });
 
