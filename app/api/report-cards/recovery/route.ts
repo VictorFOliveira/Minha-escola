@@ -52,6 +52,13 @@ export async function PUT(request: Request) {
     );
   }
 
+  if (current.status !== "RECOVERY" && current.recoveryScore === null) {
+    return NextResponse.json(
+      { error: "Esta disciplina não está em recuperação." },
+      { status: 409 },
+    );
+  }
+
   let manualFinalAverage: number | null | undefined = undefined;
 
   if (body?.manualFinalAverage !== undefined) {
@@ -122,6 +129,15 @@ export async function PUT(request: Request) {
         calculated.status === "IN_PROGRESS"
           ? null
           : session.id,
+    },
+  });
+
+  await prisma.enrollmentAcademicResult.updateMany({
+    where: { enrollmentId },
+    data: {
+      status: "IN_PROGRESS",
+      closedAt: null,
+      closedByUserId: null,
     },
   });
 
