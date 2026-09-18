@@ -10,6 +10,7 @@ const navItems: Array<{
 }> = [
   { href: "/dashboard", label: "Visão geral", icon: "◫", roles: ["ADMIN", "SECRETARY", "TEACHER", "FINANCE", "GUARDIAN"] },
   { href: "/dashboard/alunos", label: "Alunos", icon: "◎", roles: ["ADMIN", "SECRETARY"] },
+  { href: "/dashboard/matriculas", label: "Matrículas", icon: "▣", roles: ["ADMIN", "SECRETARY"] },
   { href: "/dashboard/responsaveis", label: "Responsáveis", icon: "♧", roles: ["ADMIN", "SECRETARY"] },
   { href: "/dashboard/professores", label: "Professores", icon: "♙", roles: ["ADMIN", "SECRETARY"] },
   { href: "/dashboard/funcionarios", label: "Funcionários", icon: "♢", roles: ["ADMIN"] },
