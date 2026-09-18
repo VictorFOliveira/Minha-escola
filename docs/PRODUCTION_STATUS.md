@@ -27,7 +27,8 @@ Atualizado em 18/09/2026.
 - monitoramento de produção via GitHub Actions;
 - CodeQL e dependency audit;
 - regressão HTTP;
-- teste de carga com 5.000 alunos e 600 requisições.
+- teste de carga com 5.000 alunos e 600 requisições;
+- regressão destrutiva concorrente com 3.000 requisições e páginas SSR.
 
 ## Validação final
 
@@ -50,6 +51,26 @@ Em 18/09/2026 foram observados verdes:
 - backup + restore drill real em segundo banco.
 
 Na última rodada de carga: **600 requisições, 0 falhas**, p95 sustentado de aproximadamente **275 ms** e p95 da rajada de 100 concorrentes de aproximadamente **482 ms**.
+
+## Regressão destrutiva final
+
+Em 18/09/2026 foi concluída uma rodada adicional de abuso concorrente:
+
+- 5.000 alunos e 3.000 cobranças;
+- 44 usuários concorrentes;
+- 2.000 requests com concorrência 100;
+- rajada de 1.000 requests com concorrência 250;
+- dashboard SSR, Portal do Aluno e Portal do Responsável no mix;
+- 3.000/3.000 respostas com sucesso;
+- 0 falhas e 0% de erro;
+- p95 sustentado de 491 ms;
+- p95 da rajada de 1.303 ms;
+- readiness e migration status verdes após a carga;
+- log final sem erro Prisma/P20xx, timeout, deadlock ou falha de integridade.
+
+A rodada também encontrou e corrigiu condições de corrida em idempotência, rate limit, matrícula, capacidade de turma, pagamentos e webhooks, além de endurecer callbacks de malware.
+
+Detalhes: `docs/DESTRUCTIVE_REGRESSION.md`.
 
 ## Artefatos reprodutíveis
 
