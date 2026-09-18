@@ -35,6 +35,13 @@ export async function POST(_: Request, context: Context) {
     );
   }
 
+  if (communication.status === "PUBLISHED") {
+    return NextResponse.json(
+      { error: "Este comunicado já foi publicado. Crie um novo comunicado para preservar o histórico de leitura." },
+      { status: 409 },
+    );
+  }
+
   try {
     const recipients = await publishCommunication(id, session);
 
