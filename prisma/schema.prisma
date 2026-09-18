@@ -85,6 +85,8 @@ model User {
   student     Student? @relation("StudentPortalUser", fields: [studentId], references: [id], onDelete: SetNull)
   guardianId  String?  @unique
   guardian    Guardian? @relation("GuardianPortalUser", fields: [guardianId], references: [id], onDelete: SetNull)
+  teacherId   String?  @unique
+  teacher     Teacher? @relation("TeacherPortalUser", fields: [teacherId], references: [id], onDelete: SetNull)
   resetTokens PasswordResetToken[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -175,6 +177,7 @@ model Teacher {
   status    PersonStatus @default(ACTIVE)
   classes   ClassGroup[]
   classSubjects ClassSubject[]
+  portalUser User?        @relation("TeacherPortalUser")
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -284,12 +287,27 @@ model ClassSubject {
   teacherId     String?
   teacher       Teacher?   @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   weeklyClasses Int?
+  scheduleSlots ClassScheduleSlot[]
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
   @@unique([classId, subjectId])
   @@index([subjectId])
   @@index([teacherId])
+}
+
+model ClassScheduleSlot {
+  id             String       @id @default(cuid())
+  classSubjectId String
+  classSubject   ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  weekday        Int
+  startTime      String
+  endTime        String
+  room           String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([classSubjectId, weekday])
 }
 
 model AcademicPeriod {
