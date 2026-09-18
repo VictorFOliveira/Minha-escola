@@ -1,6 +1,6 @@
 # Minha Escola
 
-Plataforma web de gestão escolar para centralizar a rotina administrativa, acadêmica e financeira de uma instituição de ensino.
+Plataforma SaaS multi-tenant de gestão escolar para centralizar operação administrativa, acadêmica, financeira, comunicação, documentos e portais de alunos/responsáveis.
 
 ## Status
 
@@ -99,7 +99,12 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - /portal/aluno
 - /portal/responsavel
 - /dashboard/financeiro
+- /dashboard/comunicacao
+- /dashboard/documentos
+- /dashboard/onboarding — somente ADMIN
+- /dashboard/auditoria — somente ADMIN
 - /dashboard/usuarios — somente ADMIN
+- /superadmin — administração da plataforma
 - /api/auth/login
 - /api/auth/logout
 - /api/auth/me
@@ -108,6 +113,7 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - /api/users — somente ADMIN
 - /api/students — ADMIN e SECRETARY
 - /api/health
+- /api/health/ready
 
 ### Fase 3 — Cadastros reais ✅
 - escola e dados institucionais;
@@ -202,34 +208,75 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - professor limitado aos resultados das disciplinas atribuídas;
 - fórmula compartilhada entre portal e fechamento oficial.
 
+### Fase 8 — Financeiro escolar e pagamentos ✅
+- aluno matriculado exige responsável ativo e responsável financeiro;
+- responsável financeiro único por aluno;
+- planos e contratos financeiros por matrícula;
+- bolsas/descontos;
+- geração de mensalidades;
+- pagamentos parciais e baixa manual;
+- inadimplência e conciliação;
+- modo MANUAL por padrão;
+- sistema EXTERNAL compatível;
+- Asaas opcional com PIX/boleto e webhook idempotente;
+- Portal do Responsável com boletins e mensalidades.
+
+### Fase 9 — Comunicação e autorizações ✅
+- central de comunicação por público;
+- professor limitado às próprias turmas;
+- comunicação específica do financeiro;
+- prioridade normal/importante/urgente;
+- anexos por link;
+- caixa de entrada de aluno e responsável;
+- leitura e confirmação de ciência;
+- autorizações aprovadas/negadas pelo responsável;
+- métricas de leitura e resposta;
+- avisos automáticos de boletim e financeiro;
+- Portal como canal padrão;
+- e-mail/WhatsApp desacoplados e opcionais.
+
+### Fase 10 — Secretaria e documentos verificáveis ✅
+- declaração de matrícula;
+- declaração de frequência;
+- boletim;
+- histórico;
+- recibo;
+- resumo/contrato de matrícula;
+- documento personalizado;
+- snapshot imutável da emissão;
+- impressão autenticada;
+- código público de verificação;
+- cancelamento com preservação do histórico;
+- documentos disponíveis nos portais.
+
+### Fase 11 — SaaS, Superadmin e base de produção ✅
+- slug e ciclo de vida por tenant;
+- onboarding da escola;
+- planos SaaS;
+- assinatura/trial por escola;
+- limites de alunos e usuários;
+- Superadmin com autenticação separada;
+- criação e suspensão de tenants;
+- trilha de auditoria;
+- exportação administrativa;
+- job diário protegido;
+- expiração de autorizações;
+- avisos financeiros programáveis;
+- health/readiness do PostgreSQL;
+- headers básicos de segurança;
+- seed de planos e Superadmin.
+
 ## Documentação técnica
 
 - [Fase 6 — Diário do Professor e Frequência](docs/FASE_6_DIARIO_FREQUENCIA.md)
 - [Fase 7 — Boletins e Resultado Final](docs/FASE_7_BOLETINS_RESULTADOS.md)
 - [Fase 8 — Financeiro escolar e pagamentos](docs/FASE_8_FINANCEIRO.md)
+- [Fase 9 — Comunicação](docs/FASE_9_COMUNICACAO.md)
+- [Fase 10 — Documentos](docs/FASE_10_DOCUMENTOS.md)
+- [Fase 11 — SaaS e produção](docs/FASE_11_SAAS_PRODUCAO.md)
 
-### Fase 8 — Financeiro escolar e pagamentos ✅
-- aluno matriculado exige responsável ativo e responsável financeiro;
-- responsável financeiro único por aluno;
-- planos financeiros por ano letivo;
-- contrato financeiro por matrícula;
-- bolsas e descontos percentuais ou fixos;
-- geração recorrente de mensalidades;
-- contas a receber e inadimplência;
-- pagamentos parciais e baixa manual;
-- conciliação automática;
-- gateway configurável por escola;
-- modo MANUAL como padrão;
-- modo EXTERNAL para escolas com sistema próprio;
-- integração Asaas opcional;
-- PIX e boleto preparados via Asaas;
-- webhook autenticado e idempotente;
-- Portal do Responsável com boletins e mensalidades;
-- pagamentos enviados ao responsável financeiro;
-- integração externa sem obrigar ativação de Asaas.
+## Estado do produto
 
-## Próximas fases
+As 11 fases planejadas estão implementadas na base do produto.
 
-9. Comunicação, notificações e documentos no Portal do Responsável.
-10. Secretaria e documentos oficiais.
-11. SaaS, produção, assinaturas e superadmin.
+Para uma implantação real ainda é necessário provisionar infraestrutura e segredos do ambiente: PostgreSQL de produção, domínio, TLS, backups gerenciados, observabilidade e, quando desejado, credenciais de Asaas/e-mail/WhatsApp. Esses itens não são ativados automaticamente no repositório.
