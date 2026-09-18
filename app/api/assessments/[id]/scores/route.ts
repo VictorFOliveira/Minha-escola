@@ -72,6 +72,13 @@ export async function PUT(request: Request, context: Context) {
 
   if (!assessment) return NextResponse.json({ error: "Avaliação não encontrada ou sem acesso." }, { status: 404 });
 
+  if (assessment.status === "CLOSED") {
+    return NextResponse.json(
+      { error: "A avaliação está fechada. Reabra-a antes de alterar as notas." },
+      { status: 409 },
+    );
+  }
+
   const body = await request.json().catch(() => null);
   if (!Array.isArray(body?.scores)) {
     return NextResponse.json({ error: "Informe as notas." }, { status: 400 });
