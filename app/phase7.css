@@ -282,3 +282,21 @@
     grid-column: auto;
   }
 }
+
+
+/* Phase 7 adds period weight to the existing academic-period form. */
+.period-form {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .period-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .period-form {
+    grid-template-columns: 1fr;
+  }
+}
