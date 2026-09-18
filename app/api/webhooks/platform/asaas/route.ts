@@ -33,102 +33,124 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Evento inválido." }, { status: 400 });
   }
 
-  let event = await prisma.platformWebhookEvent.findUnique({
-    where: {
-      provider_eventId: {
-        provider: "ASAAS",
-        eventId,
+  const result = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`
+      SELECT pg_advisory_xact_lock(
+        hashtextextended(${"platform-asaas-event:" + eventId}, 0)
+      )
+    `;
+
+    const event = await tx.platformWebhookEvent.upsert({
+      where: {
+        provider_eventId: {
+          provider: "ASAAS",
+          eventId,
+        },
       },
-    },
-  });
-
-  if (event?.processedAt) {
-    return NextResponse.json({ ok: true, duplicate: true });
-  }
-
-  if (!event) {
-    event = await prisma.platformWebhookEvent.create({
-      data: {
+      update: {},
+      create: {
         provider: "ASAAS",
         eventId,
         eventType,
         payload: payload as any,
       },
     });
-  }
 
-  if (!paymentId) {
-    await prisma.platformWebhookEvent.update({
-      where: { id: event.id },
-      data: { processedAt: new Date() },
+    if (event.processedAt) {
+      return {
+        response: { ok: true, duplicate: true },
+        audit: null,
+      };
+    }
+
+    if (!paymentId) {
+      await tx.platformWebhookEvent.update({
+        where: { id: event.id },
+        data: { processedAt: new Date() },
+      });
+      return {
+        response: { ok: true },
+        audit: null,
+      };
+    }
+
+    await tx.$queryRaw`
+      SELECT pg_advisory_xact_lock(
+        hashtextextended(${"platform-asaas-payment:" + paymentId}, 0)
+      )
+    `;
+
+    const invoice = await tx.platformInvoice.findFirst({
+      where: {
+        provider: "ASAAS",
+        externalId: paymentId,
+      },
+      include: {
+        subscription: true,
+      },
     });
-    return NextResponse.json({ ok: true });
-  }
 
-  const invoice = await prisma.platformInvoice.findFirst({
-    where: {
-      provider: "ASAAS",
-      externalId: paymentId,
-    },
-    include: {
-      subscription: true,
-    },
-  });
+    if (!invoice) {
+      await tx.platformWebhookEvent.update({
+        where: { id: event.id },
+        data: { processedAt: new Date() },
+      });
 
-  if (!invoice) {
-    await prisma.platformWebhookEvent.update({
-      where: { id: event.id },
-      data: { processedAt: new Date() },
-    });
+      return {
+        response: { ok: true, unmatched: true },
+        audit: null,
+      };
+    }
 
-    return NextResponse.json({ ok: true, unmatched: true });
-  }
-
-  await prisma.$transaction(async (tx) => {
     if (
       eventType === "PAYMENT_RECEIVED" ||
       eventType === "PAYMENT_CONFIRMED"
     ) {
-      const paidAt = payload?.payment?.paymentDate
-        ? new Date(payload.payment.paymentDate + "T12:00:00.000Z")
-        : payload?.payment?.confirmedDate
-          ? new Date(payload.payment.confirmedDate + "T12:00:00.000Z")
-          : new Date();
+      // Refund/cancel são terminais até um fluxo explícito de restauração.
+      if (!["REFUNDED", "CANCELLED"].includes(invoice.status)) {
+        const paidAt = payload?.payment?.paymentDate
+          ? new Date(payload.payment.paymentDate + "T12:00:00.000Z")
+          : payload?.payment?.confirmedDate
+            ? new Date(payload.payment.confirmedDate + "T12:00:00.000Z")
+            : new Date();
 
-      await tx.platformInvoice.update({
-        where: { id: invoice.id },
-        data: {
-          status: "PAID",
-          paidAt,
-        },
-      });
+        await tx.platformInvoice.update({
+          where: { id: invoice.id },
+          data: {
+            status: "PAID",
+            paidAt,
+          },
+        });
 
-      await tx.schoolSubscription.update({
-        where: { id: invoice.subscriptionId },
-        data: {
-          status: "ACTIVE",
-          currentPeriodStart: invoice.periodStart,
-          currentPeriodEnd: invoice.periodEnd,
-          nextBillingAt: invoice.periodEnd,
-        },
-      });
+        await tx.schoolSubscription.update({
+          where: { id: invoice.subscriptionId },
+          data: {
+            status: "ACTIVE",
+            currentPeriodStart: invoice.periodStart,
+            currentPeriodEnd: invoice.periodEnd,
+            nextBillingAt: invoice.periodEnd,
+          },
+        });
 
-      await tx.school.update({
-        where: { id: invoice.subscription.schoolId },
-        data: { lifecycleStatus: "ACTIVE" },
-      });
+        await tx.school.update({
+          where: { id: invoice.subscription.schoolId },
+          data: { lifecycleStatus: "ACTIVE" },
+        });
+      }
     }
 
     if (eventType === "PAYMENT_OVERDUE") {
-      await tx.platformInvoice.update({
-        where: { id: invoice.id },
-        data: { status: "OVERDUE" },
-      });
+      if (!["PAID", "REFUNDED", "CANCELLED"].includes(invoice.status)) {
+        await tx.platformInvoice.update({
+          where: { id: invoice.id },
+          data: { status: "OVERDUE" },
+        });
 
-      await tx.schoolSubscription.update({
-        where: { id: invoice.subscriptionId },
-        data: { status: "PAST_DUE" },
-      });
+        await tx.schoolSubscription.update({
+          where: { id: invoice.subscriptionId },
+          data: { status: "PAST_DUE" },
+        });
+      }
     }
 
     if (eventType === "PAYMENT_REFUNDED") {
@@ -157,15 +179,25 @@ export async function POST(request: Request) {
       where: { id: event.id },
       data: { processedAt: new Date() },
     });
+
+    return {
+      response: { ok: true },
+      audit: {
+        schoolId: invoice.subscription.schoolId,
+        invoiceId: invoice.id,
+      },
+    };
   });
 
-  await auditSystemAction({
-    schoolId: invoice.subscription.schoolId,
-    action: "PLATFORM_BILLING_WEBHOOK",
-    entityType: "PlatformInvoice",
-    entityId: invoice.id,
-    metadata: { eventId, eventType },
-  }).catch(() => null);
+  if (result.audit) {
+    await auditSystemAction({
+      schoolId: result.audit.schoolId,
+      action: "PLATFORM_BILLING_WEBHOOK",
+      entityType: "PlatformInvoice",
+      entityId: result.audit.invoiceId,
+      metadata: { eventId, eventType },
+    }).catch(() => null);
+  }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json(result.response);
 }
