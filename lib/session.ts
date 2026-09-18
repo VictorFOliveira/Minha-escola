@@ -16,6 +16,7 @@ export type SessionUser = {
   role: AppRole;
   studentId?: string | null;
   guardianId?: string | null;
+  teacherId?: string | null;
 };
 
 type SessionPayload = SessionUser & {
@@ -86,6 +87,7 @@ export async function getSession(): Promise<SessionPayload | null> {
 
     if (user.role === "STUDENT" && !user.studentId) return null;
     if (user.role === "GUARDIAN" && !user.guardianId) return null;
+    if (user.role === "TEACHER" && !user.teacherId) return null;
 
     return {
       sub: user.id,
@@ -97,6 +99,7 @@ export async function getSession(): Promise<SessionPayload | null> {
       role: user.role,
       studentId: user.studentId,
       guardianId: user.guardianId,
+      teacherId: user.teacherId,
     };
   } catch {
     return null;
