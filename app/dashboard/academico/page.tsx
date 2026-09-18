@@ -4,7 +4,7 @@ import { SubjectPeriodManager } from "@/components/subject-period-manager";
 import { requireRole } from "@/lib/session";
 
 export default async function AcademicPage() {
-  await requireRole(["ADMIN", "SECRETARY"]);
+  await requireRole(["ADMIN", "COORDINATOR", "SECRETARY"]);
 
   return (
     <div className="dashboard-content academic-page">
