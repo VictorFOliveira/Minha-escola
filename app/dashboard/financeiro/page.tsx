@@ -2,11 +2,11 @@ import { FinanceManager } from "@/components/finance-manager";
 import { requireRole } from "@/lib/session";
 
 export default async function FinancePage() {
-  await requireRole(["ADMIN", "FINANCE"]);
+  const session = await requireRole(["ADMIN", "FINANCE"]);
 
   return (
     <div className="dashboard-content">
-      <FinanceManager />
+      <FinanceManager canConfigure={session.role === "ADMIN"} />
     </div>
   );
 }
