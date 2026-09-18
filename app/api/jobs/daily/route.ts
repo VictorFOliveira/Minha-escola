@@ -6,6 +6,10 @@ import {
 } from "@/lib/system-communications";
 import { auditSystemAction } from "@/lib/audit";
 import type { SessionUser } from "@/lib/session";
+import {
+  issuePlatformInvoice,
+  suspendOverduePlatformSubscriptions,
+} from "@/lib/platform-billing";
 
 function authorized(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -31,9 +35,35 @@ export async function POST(request: Request) {
     data: { status: "EXPIRED" },
   });
 
+  const billingSubscriptions = await prisma.schoolSubscription.findMany({
+    where: {
+      provider: "ASAAS",
+      status: { in: ["TRIAL", "ACTIVE", "PAST_DUE"] },
+      OR: [
+        { nextBillingAt: { lte: now } },
+        {
+          nextBillingAt: null,
+          trialEndsAt: { lte: now },
+        },
+      ],
+    },
+    select: { id: true },
+  });
+
+  let platformInvoicesIssued = 0;
+
+  for (const subscription of billingSubscriptions) {
+    const result = await issuePlatformInvoice(subscription.id).catch(() => null);
+    if (result?.invoice) platformInvoicesIssued += 1;
+  }
+
+  const suspendedPlatformTenants =
+    await suspendOverduePlatformSubscriptions(now);
+
   const expiredTrials = await prisma.schoolSubscription.findMany({
     where: {
       status: "TRIAL",
+      provider: { not: "ASAAS" },
       trialEndsAt: { lt: now },
     },
     select: { id: true, schoolId: true },
@@ -145,5 +175,7 @@ export async function POST(request: Request) {
     expiredTrials: expiredTrials.length,
     overdueNotifications,
     dueSoonNotifications,
+    platformInvoicesIssued,
+    suspendedPlatformTenants,
   });
 }
