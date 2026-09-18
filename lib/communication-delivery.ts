@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sendTransactionalEmail } from "@/lib/email";
 
 function escapeHtml(value: string) {
   return value
@@ -12,66 +13,6 @@ function escapeHtml(value: string) {
 function retryAt(attempts: number) {
   const minutes = Math.min(60 * 6, 5 * 2 ** Math.max(0, attempts - 1));
   return new Date(Date.now() + minutes * 60 * 1000);
-}
-
-async function sendResendEmail(input: {
-  deliveryId: string;
-  to: string;
-  subject: string;
-  content: string;
-}) {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.EMAIL_FROM?.trim();
-
-  if (!apiKey || !from) {
-    throw new Error("RESEND_API_KEY/EMAIL_FROM não configurados.");
-  }
-
-  const appUrl = process.env.APP_URL?.trim();
-  const portalHint = appUrl
-    ? '<p style="margin-top:24px"><a href="' +
-      escapeHtml(appUrl) +
-      '">Acessar Minha Escola</a></p>'
-    : "";
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer " + apiKey,
-      "Content-Type": "application/json",
-      "Idempotency-Key": "communication-delivery/" + input.deliveryId,
-    },
-    body: JSON.stringify({
-      from,
-      to: [input.to],
-      subject: input.subject,
-      html:
-        "<div style=\"font-family:Arial,sans-serif;line-height:1.6\">" +
-        "<h2>" +
-        escapeHtml(input.subject) +
-        "</h2><p>" +
-        escapeHtml(input.content).replaceAll("\n", "<br/>") +
-        "</p>" +
-        portalHint +
-        "</div>",
-    }),
-  });
-
-  const data = (await response.json().catch(() => ({}))) as {
-    id?: string;
-    message?: string;
-    error?: { message?: string };
-  };
-
-  if (!response.ok) {
-    throw new Error(
-      data.error?.message ||
-        data.message ||
-        "Falha ao enviar e-mail pelo Resend.",
-    );
-  }
-
-  return data.id || null;
 }
 
 async function sendMetaWhatsApp(input: {
@@ -234,11 +175,26 @@ export async function processCommunicationDeliveries(limit = 100) {
           );
         }
 
-        providerId = await sendResendEmail({
-          deliveryId: delivery.id,
+        const appUrl = process.env.APP_URL?.trim();
+        const portalHint = appUrl
+          ? '<p style="margin-top:24px"><a href="' +
+            escapeHtml(appUrl) +
+            '">Acessar Minha Escola</a></p>'
+          : "";
+
+        providerId = await sendTransactionalEmail({
           to: destination,
           subject: communication.title,
-          content: communication.content,
+          html:
+            '<div style="font-family:Arial,sans-serif;line-height:1.6">' +
+            "<h2>" +
+            escapeHtml(communication.title) +
+            "</h2><p>" +
+            escapeHtml(communication.content).replaceAll("\n", "<br/>") +
+            "</p>" +
+            portalHint +
+            "</div>",
+          idempotencyKey: "communication-delivery/" + delivery.id,
         });
       } else {
         if (!settings?.whatsappEnabled) {
