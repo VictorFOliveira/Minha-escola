@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { assertStudentLimit } from "@/lib/tenant-limits";
+import {
+  idempotencyHash,
+  readIdempotency,
+  saveIdempotency,
+} from "@/lib/idempotency";
+import { emitSchoolEvent } from "@/lib/outgoing-webhooks";
 import { paginationFromRequest, paginationMeta } from "@/lib/pagination";
 
 const allowedRoles = ["ADMIN", "SECRETARY"];
@@ -57,6 +63,26 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   if (!allowedRoles.includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
 
+  const operation = "student.create";
+  const previous = await readIdempotency(
+    request,
+    session.schoolId,
+    operation,
+  ).catch(() => null);
+
+  if (previous?.responseBody && previous.responseStatus) {
+    return NextResponse.json(previous.responseBody, {
+      status: previous.responseStatus,
+      headers: { "Idempotent-Replay": "true" },
+    });
+  }
+
+  const keyHash = idempotencyHash(
+    request,
+    session.schoolId,
+    operation,
+  );
+
   try {
     await assertStudentLimit(session.schoolId);
   } catch (error) {
@@ -95,5 +121,27 @@ export async function POST(request: Request) {
     },
   });
 
-  return NextResponse.json({ student }, { status: 201 });
+  const responseBody = { student };
+
+  await Promise.all([
+    saveIdempotency({
+      schoolId: session.schoolId,
+      operation,
+      keyHash,
+      responseStatus: 201,
+      responseBody,
+      resourceId: student.id,
+    }).catch(() => null),
+    emitSchoolEvent({
+      schoolId: session.schoolId,
+      eventType: "student.created",
+      payload: {
+        studentId: student.id,
+        registration: student.registration,
+        status: student.status,
+      },
+    }).catch(() => null),
+  ]);
+
+  return NextResponse.json(responseBody, { status: 201 });
 }
