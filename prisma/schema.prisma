@@ -962,6 +962,9 @@ model CommunicationDelivery {
   destination String?
   providerId  String?
   error       String?
+  attempts    Int                    @default(0)
+  lastAttemptAt DateTime?
+  nextAttemptAt DateTime?
   sentAt      DateTime?
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
