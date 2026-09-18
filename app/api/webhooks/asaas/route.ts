@@ -170,6 +170,19 @@ export async function POST(request: Request) {
           externalStatus: payload?.payment?.status || eventType,
         },
       });
+
+      await tx.schoolDocument.updateMany({
+        where: {
+          chargeId: charge.id,
+          type: "PAYMENT_RECEIPT",
+          status: "ISSUED",
+        },
+        data: {
+          status: "CANCELLED",
+          cancelledAt: new Date(),
+          cancellationReason: "Pagamento estornado pelo provedor.",
+        },
+      });
     }
 
     if (
