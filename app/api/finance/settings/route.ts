@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { isAsaasConfigured } from "@/lib/asaas";
+import { auditUserAction } from "@/lib/audit";
 
 export async function GET() {
   const session = await getSession();
@@ -78,6 +79,18 @@ export async function PUT(request: Request) {
       sendReportToGuardian: body?.sendReportToGuardian !== false,
     },
   });
+
+  await auditUserAction({
+    schoolId: session.schoolId,
+    userId: session.id,
+    action: "FINANCE_SETTINGS_UPDATE",
+    entityType: "FinanceSettings",
+    entityId: settings.id,
+    metadata: {
+      provider: settings.provider,
+      gatewayEnabled: settings.gatewayEnabled,
+    },
+  }).catch(() => null);
 
   return NextResponse.json({ settings });
 }
