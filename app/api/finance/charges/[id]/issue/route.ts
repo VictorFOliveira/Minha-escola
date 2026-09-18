@@ -47,7 +47,17 @@ export async function POST(request: Request, context: Context) {
   }
 
   if (settings.provider === "EXTERNAL") {
+    const updated = await prisma.charge.update({
+      where: { id: charge.id },
+      data: {
+        provider: "EXTERNAL",
+        invoiceUrl: settings.externalPaymentUrl,
+        externalStatus: "REDIRECT",
+      },
+    });
+
     return NextResponse.json({
+      charge: updated,
       provider: "EXTERNAL",
       externalPaymentUrl: settings.externalPaymentUrl,
       message:
