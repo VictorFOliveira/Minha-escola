@@ -52,11 +52,22 @@ async function login(actor, ipIndex) {
 }
 
 function endpointFor(actor, requestIndex) {
+  if (actor.role === "GUARDIAN") {
+    const endpoints = [
+      "/api/auth/me",
+      "/api/communications/inbox",
+      "/api/documents/mine",
+      "/portal/responsavel",
+    ];
+    return endpoints[requestIndex % endpoints.length];
+  }
+
   if (actor.role === "STUDENT") {
     const endpoints = [
       "/api/auth/me",
       "/api/communications/inbox",
       "/api/documents/mine",
+      "/portal/aluno",
     ];
     return endpoints[requestIndex % endpoints.length];
   }
@@ -66,6 +77,7 @@ function endpointFor(actor, requestIndex) {
       "/api/auth/me",
       "/api/classes?page=1&pageSize=50",
       "/api/enrollments?page=1&pageSize=50",
+      "/dashboard",
     ];
     return endpoints[requestIndex % endpoints.length];
   }
@@ -76,6 +88,7 @@ function endpointFor(actor, requestIndex) {
       "/api/classes?page=1&pageSize=50",
       "/api/enrollments?page=1&pageSize=50",
       "/api/academic-periods",
+      "/dashboard",
     ];
     return endpoints[requestIndex % endpoints.length];
   }
@@ -86,6 +99,7 @@ function endpointFor(actor, requestIndex) {
       "/api/finance/charges?page=1&pageSize=50",
       "/api/finance/contracts?page=1&pageSize=50",
       "/api/finance/plans",
+      "/dashboard",
     ];
     return endpoints[requestIndex % endpoints.length];
   }
@@ -96,6 +110,7 @@ function endpointFor(actor, requestIndex) {
     "/api/teachers?page=1&pageSize=50",
     "/api/classes?page=1&pageSize=50",
     "/api/enrollments?page=1&pageSize=50",
+    "/dashboard",
   ];
   return endpoints[requestIndex % endpoints.length];
 }
@@ -303,7 +318,48 @@ async function createFixture() {
     );
   }
 
+  const guardianRecords = [];
+  for (let index = 0; index < 5; index += 1) {
+    const guardian = await prisma.guardian.create({
+      data: {
+        schoolId: school.id,
+        name: "Responsável Load " + index,
+        phone: "85999" + String(index).padStart(6, "0"),
+        email:
+          "guardian-data-" + suffix + "-" + index + "@example.invalid",
+        status: "ACTIVE",
+      },
+    });
+    await prisma.studentGuardian.create({
+      data: {
+        studentId: selectedStudents[index].id,
+        guardianId: guardian.id,
+        relationship: "Responsável",
+        financialResponsible: true,
+        authorizedPickup: true,
+      },
+    });
+    guardianRecords.push(guardian);
+  }
+
   const actors = [];
+
+  for (let index = 0; index < guardianRecords.length; index += 1) {
+    const email =
+      "guardian-user-" + suffix + "-" + index + "@regression.invalid";
+    const user = await prisma.user.create({
+      data: {
+        schoolId: school.id,
+        name: "Responsável User " + index,
+        email,
+        password: hash,
+        role: "GUARDIAN",
+        active: true,
+        guardianId: guardianRecords[index].id,
+      },
+    });
+    actors.push({ id: user.id, email, role: "GUARDIAN" });
+  }
 
   for (let index = 0; index < 20; index += 1) {
     const email = "student-user-" + suffix + "-" + index + "@regression.invalid";
@@ -404,7 +460,7 @@ async function main() {
   console.log(
     "Fixture: 5.000 alunos, 3.000 cobranças, " +
       fixture.actors.length +
-      " usuários concorrentes.",
+      " usuários concorrentes (incluindo aluno, responsável e equipe).",
   );
   console.log(
     "Seed alunos: " +
