@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { notifyBillingSchedule } from "@/lib/system-communications";
 import {
   addMonthsPreservingDay,
   calculateDiscount,
@@ -102,6 +103,10 @@ export async function POST(_: Request, context: Context) {
     where: { contractId: contract.id },
     orderBy: { installmentNumber: "asc" },
   });
+
+  if (createData.length) {
+    await notifyBillingSchedule({ session, contractId: contract.id }).catch(() => null);
+  }
 
   return NextResponse.json({
     created: createData.length,
