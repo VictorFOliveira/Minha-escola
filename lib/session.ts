@@ -81,7 +81,11 @@ export async function getSession(): Promise<SessionPayload | null> {
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
       include: {
-        school: true,
+        school: {
+          include: {
+            subscription: true,
+          },
+        },
         enrollment: {
           include: { class: true },
         },
@@ -91,6 +95,22 @@ export async function getSession(): Promise<SessionPayload | null> {
     });
 
     if (!user || !user.active || !isAppRole(user.role)) return null;
+
+    if (
+      ["SUSPENDED", "CANCELLED"].includes(user.school.lifecycleStatus) ||
+      ["SUSPENDED", "CANCELLED"].includes(
+        user.school.subscription?.status || "",
+      )
+    ) {
+      return null;
+    }
+
+    if (
+      user.school.lifecycleStatus === "ONBOARDING" &&
+      user.role !== "ADMIN"
+    ) {
+      return null;
+    }
 
     if (
       user.role === "STUDENT" &&
