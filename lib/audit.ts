@@ -1,4 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+
+function jsonMetadata(
+  value?: Record<string, unknown> | null,
+): Prisma.InputJsonValue | undefined {
+  if (!value) return undefined;
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
 
 export async function auditUserAction(input: {
   schoolId: string;
@@ -16,7 +24,7 @@ export async function auditUserAction(input: {
       action: input.action,
       entityType: input.entityType,
       entityId: input.entityId || null,
-      metadata: input.metadata || undefined,
+      metadata: jsonMetadata(input.metadata),
     },
   });
 }
@@ -37,7 +45,7 @@ export async function auditPlatformAction(input: {
       action: input.action,
       entityType: input.entityType,
       entityId: input.entityId || null,
-      metadata: input.metadata || undefined,
+      metadata: jsonMetadata(input.metadata),
     },
   });
 }
@@ -56,7 +64,7 @@ export async function auditSystemAction(input: {
       action: input.action,
       entityType: input.entityType,
       entityId: input.entityId || null,
-      metadata: input.metadata || undefined,
+      metadata: jsonMetadata(input.metadata),
     },
   });
 }
