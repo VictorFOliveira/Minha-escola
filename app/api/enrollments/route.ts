@@ -103,6 +103,14 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const studentId = typeof body?.studentId === "string" ? body.studentId : "";
   const classId = typeof body?.classId === "string" ? body.classId : "";
+  const startedAt = body?.startedAt ? new Date(body.startedAt) : new Date();
+
+  if (Number.isNaN(startedAt.getTime())) {
+    return NextResponse.json(
+      { error: "Data de início da matrícula inválida." },
+      { status: 400 },
+    );
+  }
 
   const [student, classGroup] = await Promise.all([
     prisma.student.findFirst({
@@ -179,7 +187,7 @@ export async function POST(request: Request) {
       type: "NEW",
       status,
       notes: body?.notes?.trim() || null,
-      startedAt: body?.startedAt ? new Date(body.startedAt) : new Date(),
+      startedAt,
     },
     include: { student: true, class: true },
   });
