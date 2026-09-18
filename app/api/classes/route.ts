@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { paginationFromRequest, paginationMeta } from "@/lib/pagination";
+import {
+  idempotencyHash,
+  readIdempotency,
+  saveIdempotency,
+} from "@/lib/idempotency";
 
 const readRoles = ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"];
 const writeRoles = ["ADMIN", "SECRETARY"];
@@ -16,32 +22,72 @@ function parseCapacity(value: unknown) {
   return Number.isInteger(capacity) && capacity > 0 ? capacity : null;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   if (!readRoles.includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
 
-  const classes = await prisma.classGroup.findMany({
-    where: {
-      schoolId: session.schoolId,
-      ...(session.role === "TEACHER" && session.teacherId
-        ? {
-            OR: [
-              { teacherId: session.teacherId },
-              { classSubjects: { some: { teacherId: session.teacherId } } },
-            ],
-          }
-        : {}),
-    },
-    orderBy: [{ schoolYear: "desc" }, { gradeLevel: "asc" }, { name: "asc" }],
-    include: {
-      teacher: true,
-      curriculum: true,
-      _count: { select: { enrollments: { where: { status: { in: ["ACTIVE", "PENDING"] } } } } },
-    },
+  const pagination = paginationFromRequest(request, {
+    defaultPageSize: 100,
+    maxPageSize: 250,
+    maxAll: 5000,
   });
+  const url = new URL(request.url);
+  const requestedYear = Number(url.searchParams.get("schoolYear") || 0);
 
-  return NextResponse.json({ classes });
+  const where = {
+    schoolId: session.schoolId,
+    ...(Number.isInteger(requestedYear) && requestedYear > 0
+      ? { schoolYear: requestedYear }
+      : {}),
+    ...(pagination.search
+      ? {
+          OR: [
+            { name: { contains: pagination.search, mode: "insensitive" as const } },
+            { gradeLevel: { contains: pagination.search, mode: "insensitive" as const } },
+            { room: { contains: pagination.search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+    ...(session.role === "TEACHER" && session.teacherId
+      ? {
+          AND: [
+            {
+              OR: [
+                { teacherId: session.teacherId },
+                { classSubjects: { some: { teacherId: session.teacherId } } },
+              ],
+            },
+          ],
+        }
+      : {}),
+  };
+
+  const [classes, total] = await Promise.all([
+    prisma.classGroup.findMany({
+      where,
+      orderBy: [{ schoolYear: "desc" }, { gradeLevel: "asc" }, { name: "asc" }],
+      skip: pagination.skip,
+      take: pagination.take,
+      include: {
+        teacher: true,
+        curriculum: true,
+        _count: {
+          select: {
+            enrollments: {
+              where: { status: { in: ["ACTIVE", "PENDING"] } },
+            },
+          },
+        },
+      },
+    }),
+    prisma.classGroup.count({ where }),
+  ]);
+
+  return NextResponse.json({
+    classes,
+    meta: paginationMeta(total, pagination.page, pagination.pageSize),
+  });
 }
 
 export async function POST(request: Request) {
@@ -49,6 +95,21 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   if (!writeRoles.includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
 
+  const operation = "class.create";
+  const previous = await readIdempotency(
+    request,
+    session.schoolId,
+    operation,
+  ).catch(() => null);
+
+  if (previous?.responseBody && previous.responseStatus) {
+    return NextResponse.json(previous.responseBody, {
+      status: previous.responseStatus,
+      headers: { "Idempotent-Replay": "true" },
+    });
+  }
+
+  const keyHash = idempotencyHash(request, session.schoolId, operation);
   const body = await request.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   const gradeLevel = typeof body?.gradeLevel === "string" ? body.gradeLevel.trim() : "";
@@ -92,5 +153,16 @@ export async function POST(request: Request) {
     include: { teacher: true, _count: { select: { enrollments: { where: { status: { in: ["ACTIVE", "PENDING"] } } } } } },
   });
 
-  return NextResponse.json({ class: classGroup }, { status: 201 });
+  const responseBody = { class: classGroup };
+
+  await saveIdempotency({
+    schoolId: session.schoolId,
+    operation,
+    keyHash,
+    responseStatus: 201,
+    responseBody,
+    resourceId: classGroup.id,
+  }).catch(() => null);
+
+  return NextResponse.json(responseBody, { status: 201 });
 }
