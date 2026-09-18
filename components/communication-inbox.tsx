@@ -53,7 +53,13 @@ type Authorization = {
   communication: {
     id: string;
     title: string;
+    content: string;
     expiresAt: string | null;
+    attachments: Array<{
+      id: string;
+      name: string;
+      url: string;
+    }>;
   };
 };
 
@@ -243,6 +249,18 @@ export function CommunicationInbox({
                   Aluno: {authorization.student.name} •{" "}
                   {authorization.student.registration}
                 </small>
+                <p className="authorization-content">
+                  {authorization.communication.content}
+                </p>
+                {authorization.communication.attachments.length ? (
+                  <div className="communication-attachments">
+                    {authorization.communication.attachments.map((attachment) => (
+                      <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer">
+                        ↗ {attachment.name}
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
                 {authorization.communication.expiresAt ? (
                   <small>
                     Prazo:{" "}
