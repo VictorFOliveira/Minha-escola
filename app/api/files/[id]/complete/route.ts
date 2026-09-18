@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { headStoredObject } from "@/lib/storage";
 import { auditUserAction } from "@/lib/audit";
+import {
+  malwareScannerConfigured,
+  malwareScanRequired,
+  requestMalwareScan,
+} from "@/lib/malware-scan";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -42,13 +47,73 @@ export async function POST(_: Request, context: Context) {
       );
     }
 
-    const updated = await prisma.fileAsset.update({
-      where: { id: asset.id },
-      data: {
-        status: "READY",
-        readyAt: new Date(),
-      },
-    });
+    let updated;
+
+    if (malwareScannerConfigured()) {
+      updated = await prisma.fileAsset.update({
+        where: { id: asset.id },
+        data: {
+          status: "PENDING",
+          scanStatus: "PENDING",
+        },
+      });
+
+      try {
+        await requestMalwareScan(asset.id);
+      } catch (error) {
+        updated = await prisma.fileAsset.update({
+          where: { id: asset.id },
+          data: {
+            scanStatus: "FAILED",
+            scanResult:
+              error instanceof Error
+                ? error.message.slice(0, 1000)
+                : "Falha ao solicitar análise.",
+          },
+        });
+
+        if (malwareScanRequired()) {
+          return NextResponse.json(
+            {
+              error:
+                "Upload recebido, mas o scanner obrigatório não pôde analisar o arquivo.",
+              asset: updated,
+            },
+            { status: 503 },
+          );
+        }
+      }
+    } else if (malwareScanRequired()) {
+      updated = await prisma.fileAsset.update({
+        where: { id: asset.id },
+        data: {
+          status: "PENDING",
+          scanStatus: "FAILED",
+          scanResult: "Scanner obrigatório não configurado.",
+        },
+      });
+
+      return NextResponse.json(
+        {
+          error:
+            "Scanner de malware obrigatório não está configurado.",
+          asset: updated,
+        },
+        { status: 503 },
+      );
+    } else {
+      updated = await prisma.fileAsset.update({
+        where: { id: asset.id },
+        data: {
+          status: "READY",
+          readyAt: new Date(),
+          scanStatus: "SKIPPED",
+          scanResult:
+            "Scanner externo não configurado; política permitiu publicação.",
+          scannedAt: new Date(),
+        },
+      });
+    }
 
     await auditUserAction({
       schoolId: session.schoolId,
@@ -59,10 +124,14 @@ export async function POST(_: Request, context: Context) {
       metadata: {
         originalName: asset.originalName,
         sizeBytes: asset.sizeBytes,
+        scanStatus: updated.scanStatus,
       },
     }).catch(() => null);
 
-    return NextResponse.json({ asset: updated });
+    return NextResponse.json({
+      asset: updated,
+      available: updated.status === "READY",
+    });
   } catch {
     return NextResponse.json(
       { error: "Arquivo ainda não está disponível no storage." },
