@@ -29,13 +29,26 @@ enum ChargeStatus {
   CANCELLED
 }
 
+enum PersonStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model School {
   id        String       @id @default(cuid())
   name      String
   document  String?      @unique
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
   users     User[]
   students  Student[]
+  guardians Guardian[]
   teachers  Teacher[]
+  employees Employee[]
   classes   ClassGroup[]
   charges   Charge[]
   createdAt DateTime     @default(now())
@@ -72,24 +85,60 @@ model PasswordResetToken {
 }
 
 model Student {
-  id            String       @id @default(cuid())
-  schoolId      String
-  school        School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  registration  String
-  name          String
-  birthDate     DateTime?
-  guardianName  String?
-  guardianPhone String?
-  guardianEmail String?
-  enrollments   Enrollment[]
-  attendances   Attendance[]
-  grades        Grade[]
-  charges       Charge[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id           String       @id @default(cuid())
+  schoolId     String
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  registration String
+  name         String
+  birthDate    DateTime?
+  document     String?
+  phone        String?
+  email        String?
+  address      String?
+  status       PersonStatus @default(ACTIVE)
+  guardians    StudentGuardian[]
+  enrollments  Enrollment[]
+  attendances  Attendance[]
+  grades       Grade[]
+  charges      Charge[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   @@unique([schoolId, registration])
   @@index([schoolId, name])
+  @@index([schoolId, status])
+}
+
+model Guardian {
+  id        String       @id @default(cuid())
+  schoolId  String
+  school    School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name      String
+  document  String?
+  phone     String
+  email     String?
+  address   String?
+  status    PersonStatus @default(ACTIVE)
+  students  StudentGuardian[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([schoolId, name])
+  @@index([schoolId, status])
+}
+
+model StudentGuardian {
+  studentId    String
+  guardianId   String
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  guardian     Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  relationship String
+  financialResponsible Boolean @default(false)
+  authorizedPickup     Boolean @default(true)
+  createdAt             DateTime @default(now())
+
+  @@id([studentId, guardianId])
+  @@index([guardianId])
 }
 
 model Teacher {
@@ -97,13 +146,36 @@ model Teacher {
   schoolId  String
   school    School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   name      String
+  document  String?
   email     String?
   phone     String?
+  specialty String?
+  status    PersonStatus @default(ACTIVE)
   classes   ClassGroup[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  @@index([schoolId])
+  @@index([schoolId, name])
+  @@index([schoolId, status])
+}
+
+model Employee {
+  id         String       @id @default(cuid())
+  schoolId   String
+  school     School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name       String
+  document   String?
+  email      String?
+  phone      String?
+  jobTitle   String
+  department String?
+  status     PersonStatus @default(ACTIVE)
+  hiredAt    DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([schoolId, name])
+  @@index([schoolId, status])
 }
 
 model ClassGroup {
