@@ -78,7 +78,9 @@ export default function HomePage() {
             ["03", "Turmas e matrículas", "Turmas reais, vagas, matrícula, rematrícula, diário e frequência por disciplina."],
             ["04", "Financeiro", "Planos, mensalidades, bolsas, pagamentos, inadimplência e gateway opcional."],
             ["05", "Acesso por perfil", "Administrador, coordenação, secretaria, professor, financeiro, aluno e responsável."],
-            ["06", "Multi-escola", "Arquitetura SaaS preparada para atender várias instituições."],
+            ["06", "Comunicação", "Avisos, leitura, ciência e autorizações entre escola, aluno e responsáveis."],
+            ["07", "Documentos", "Declarações, boletins, históricos e recibos com código de verificação."],
+            ["08", "Plataforma SaaS", "Multi-escola, planos, onboarding, auditoria e Superadmin."],
           ].map(([number, title, description]) => (
             <article className="feature-card" key={title}>
               <span>{number}</span>
@@ -92,8 +94,8 @@ export default function HomePage() {
       <section className="section section--soft" id="modulos">
         <div className="container split-section">
           <div>
-            <span className="eyebrow">EM CONSTRUÇÃO CONTÍNUA</span>
-            <h2>Um SaaS que cresce sem precisar recomeçar.</h2>
+            <span className="eyebrow">VERSÃO 1.0 • 11 FASES</span>
+            <h2>Da matrícula ao Superadmin em uma única arquitetura.</h2>
           </div>
           <div className="check-list">
             <p><strong>Fase 1 concluída</strong><span>Fundação, dashboard, API e estrutura multi-escola.</span></p>
@@ -104,7 +106,9 @@ export default function HomePage() {
             <p><strong>Fase 6 concluída</strong><span>Diário do professor, aulas por disciplina, conteúdo ministrado, tarefa e frequência individual por aula.</span></p>
             <p><strong>Fase 7 concluída</strong><span>Boletim oficial, fechamento de médias, recuperação, frequência e resultado final.</span></p>
             <p><strong>Fase 8 concluída</strong><span>Planos, contratos, bolsas, mensalidades, pagamentos, inadimplência e gateway opcional.</span></p>
-            <p><strong>Próxima fase</strong><span>Comunicação, notificações e documentos no Portal do Responsável.</span></p>
+            <p><strong>Fase 9 concluída</strong><span>Comunicação, leitura, ciência, autorizações e alertas acadêmicos/financeiros.</span></p>
+            <p><strong>Fase 10 concluída</strong><span>Secretaria, documentos verificáveis, impressão e histórico de emissões.</span></p>
+            <p><strong>Fase 11 concluída</strong><span>Multi-tenant comercial, planos, onboarding, Superadmin, auditoria e base de produção.</span></p>
           </div>
         </div>
       </section>
@@ -112,8 +116,8 @@ export default function HomePage() {
       <section className="cta-section container" id="implantacao">
         <div>
           <span className="eyebrow eyebrow--light">MINHA ESCOLA SaaS</span>
-          <h2>A gestão escolar saindo da demonstração e virando operação real.</h2>
-          <p>Cadastros, autenticação e dados por instituição já fazem parte da base do produto.</p>
+          <h2>Uma base completa para operar e comercializar gestão escolar como SaaS.</h2>
+          <p>Acadêmico, financeiro, comunicação, documentos, portais e gestão multi-tenant integrados na mesma aplicação.</p>
         </div>
         <a className="button button--light" href="/login">Entrar no sistema →</a>
       </section>
