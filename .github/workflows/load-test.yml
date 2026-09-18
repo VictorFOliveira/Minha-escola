@@ -1,0 +1,115 @@
+name: Mixed-role load test
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'load-test-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: minha_escola
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d minha_escola"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/minha_escola?schema=public
+      AUTH_SECRET: load-auth-secret-minimum-32-characters-2026
+      PLATFORM_AUTH_SECRET: load-platform-secret-minimum-32-characters
+      SECURITY_PEPPER: load-security-pepper-minimum-32-characters
+      CRON_SECRET: load-cron-secret-minimum-32-characters
+      APP_URL: http://127.0.0.1:3000
+      REQUIRE_MALWARE_SCAN: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Apply schema
+        shell: bash
+        run: |
+          if [ -f prisma/migrations/migration_lock.toml ]; then
+            npm run db:migrate:deploy
+          else
+            npm run db:push
+          fi
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_ENV: production
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/minha_escola?schema=public
+          AUTH_SECRET: load-auth-secret-minimum-32-characters-2026
+          PLATFORM_AUTH_SECRET: load-platform-secret-minimum-32-characters
+
+      - name: Start compiled application
+        shell: bash
+        env:
+          NODE_ENV: production
+        run: |
+          set -euo pipefail
+          npm start > /tmp/minha-escola-load.log 2>&1 &
+          echo $! > /tmp/minha-escola-load.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health/ready >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/minha-escola-load.log
+          exit 1
+
+      - name: Run 600-request mixed-role test
+        env:
+          LOAD_SUSTAINED_REQUESTS: "400"
+          LOAD_SUSTAINED_CONCURRENCY: "40"
+          LOAD_BURST_REQUESTS: "200"
+          LOAD_BURST_CONCURRENCY: "100"
+        run: npm run test:load
+
+      - name: Application log
+        if: always()
+        shell: bash
+        run: tail -n 300 /tmp/minha-escola-load.log 2>/dev/null || true
+
+      - name: Stop application
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/minha-escola-load.pid ]; then
+            kill "$(cat /tmp/minha-escola-load.pid)" 2>/dev/null || true
+          fi
