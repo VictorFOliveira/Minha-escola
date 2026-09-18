@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { hasSchoolFeature } from "@/lib/features";
 
 export async function GET() {
   const session = await getSession();
@@ -34,6 +35,16 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
+
+  if (
+    Boolean(body?.whatsappEnabled) &&
+    !(await hasSchoolFeature(session.schoolId, "whatsapp"))
+  ) {
+    return NextResponse.json(
+      { error: "WhatsApp não está disponível no plano atual." },
+      { status: 403 },
+    );
+  }
 
   const settings = await prisma.communicationSettings.upsert({
     where: { schoolId: session.schoolId },
