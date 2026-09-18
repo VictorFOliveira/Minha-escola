@@ -50,6 +50,8 @@ cp .env.example .env
 
 Configure DATABASE_URL, AUTH_SECRET, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD e SEED_SCHOOL_NAME no arquivo .env.
 
+A integração com Asaas é opcional. Se a escola usar baixa manual ou um sistema próprio, ASAAS_API_KEY pode permanecer vazia.
+
 Depois execute:
 
 ~~~bash
@@ -204,10 +206,30 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 
 - [Fase 6 — Diário do Professor e Frequência](docs/FASE_6_DIARIO_FREQUENCIA.md)
 - [Fase 7 — Boletins e Resultado Final](docs/FASE_7_BOLETINS_RESULTADOS.md)
+- [Fase 8 — Financeiro escolar e pagamentos](docs/FASE_8_FINANCEIRO.md)
+
+### Fase 8 — Financeiro escolar e pagamentos ✅
+- aluno matriculado exige responsável ativo e responsável financeiro;
+- responsável financeiro único por aluno;
+- planos financeiros por ano letivo;
+- contrato financeiro por matrícula;
+- bolsas e descontos percentuais ou fixos;
+- geração recorrente de mensalidades;
+- contas a receber e inadimplência;
+- pagamentos parciais e baixa manual;
+- conciliação automática;
+- gateway configurável por escola;
+- modo MANUAL como padrão;
+- modo EXTERNAL para escolas com sistema próprio;
+- integração Asaas opcional;
+- PIX e boleto preparados via Asaas;
+- webhook autenticado e idempotente;
+- Portal do Responsável com boletins e mensalidades;
+- pagamentos enviados ao responsável financeiro;
+- integração externa sem obrigar ativação de Asaas.
 
 ## Próximas fases
 
-8. Financeiro completo e pagamentos.
-9. Portal do responsável e comunicação.
+9. Comunicação, notificações e documentos no Portal do Responsável.
 10. Secretaria e documentos oficiais.
 11. SaaS, produção, assinaturas e superadmin.
