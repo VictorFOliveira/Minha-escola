@@ -32,8 +32,48 @@ enum EnrollmentType {
 
 enum ChargeStatus {
   PENDING
+  PARTIAL
   PAID
   OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+enum BillingContractStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+  CANCELLED
+}
+
+enum BillingBenefitType {
+  SCHOLARSHIP
+  DISCOUNT
+}
+
+enum BillingValueType {
+  PERCENTAGE
+  FIXED
+}
+
+enum PaymentProvider {
+  MANUAL
+  ASAAS
+}
+
+enum PaymentMethod {
+  PIX
+  BOLETO
+  CREDIT_CARD
+  CASH
+  BANK_TRANSFER
+  OTHER
+}
+
+enum PaymentStatus {
+  CONFIRMED
+  RECEIVED
+  REFUNDED
   CANCELLED
 }
 
@@ -138,6 +178,9 @@ model School {
   academicPeriods AcademicPeriod[]
   academicPolicies AcademicPolicy[]
   feedbacks AcademicFeedback[]
+  billingPlans BillingPlan[]
+  billingContracts BillingContract[]
+  paymentCustomers PaymentCustomer[]
   charges   Charge[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -166,6 +209,7 @@ model User {
   periodGradesClosed PeriodGrade[] @relation("PeriodGradeClosedBy")
   subjectResultsClosed SubjectFinalResult[] @relation("SubjectResultClosedBy")
   enrollmentResultsClosed EnrollmentAcademicResult[] @relation("EnrollmentResultClosedBy")
+  paymentsRecorded Payment[] @relation("PaymentRecordedBy")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -220,6 +264,9 @@ model Guardian {
   address   String?
   status    PersonStatus @default(ACTIVE)
   students  StudentGuardian[]
+  billingContracts BillingContract[]
+  paymentCustomers PaymentCustomer[]
+  charges Charge[]
   portalUser User?        @relation("GuardianPortalUser")
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -433,6 +480,8 @@ model Enrollment {
   periodGrades         PeriodGrade[]
   subjectResults       SubjectFinalResult[]
   academicResult       EnrollmentAcademicResult?
+  billingContract      BillingContract?
+  charges              Charge[]
 
   @@unique([studentId, classId])
   @@index([classId, status])
@@ -645,20 +694,155 @@ model Grade {
   @@index([studentId, classId])
 }
 
-model Charge {
-  id          String       @id @default(cuid())
-  schoolId    String
-  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  studentId   String
-  student     Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  description String
-  amount      Decimal      @db.Decimal(12, 2)
-  dueDate     DateTime
-  paidAt      DateTime?
-  status      ChargeStatus @default(PENDING)
-  externalId  String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+model BillingPlan {
+  id                String   @id @default(cuid())
+  schoolId          String
+  school            School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name              String
+  description       String?
+  schoolYear        Int
+  installmentAmount Decimal  @db.Decimal(12, 2)
+  installments      Int      @default(12)
+  dueDay            Int
+  active            Boolean  @default(true)
+  contracts         BillingContract[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
+  @@unique([schoolId, schoolYear, name])
+  @@index([schoolId, schoolYear, active])
+}
+
+model BillingContract {
+  id                String                @id @default(cuid())
+  schoolId          String
+  school            School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  enrollmentId      String                @unique
+  enrollment        Enrollment            @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  guardianId        String?
+  guardian          Guardian?             @relation(fields: [guardianId], references: [id], onDelete: SetNull)
+  billingPlanId     String?
+  billingPlan       BillingPlan?          @relation(fields: [billingPlanId], references: [id], onDelete: SetNull)
+  installmentAmount Decimal               @db.Decimal(12, 2)
+  installments      Int                   @default(12)
+  dueDay            Int
+  firstDueDate      DateTime
+  status            BillingContractStatus @default(ACTIVE)
+  benefits          BillingBenefit[]
+  charges           Charge[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([schoolId, status])
+  @@index([guardianId])
+  @@index([billingPlanId])
+}
+
+model BillingBenefit {
+  id          String             @id @default(cuid())
+  contractId  String
+  contract    BillingContract    @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  name        String
+  type        BillingBenefitType @default(DISCOUNT)
+  valueType   BillingValueType
+  value       Decimal            @db.Decimal(12, 2)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([contractId, active])
+}
+
+model PaymentCustomer {
+  id         String          @id @default(cuid())
+  schoolId   String
+  school     School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  guardianId String
+  guardian   Guardian        @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  provider   PaymentProvider
+  externalId String
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@unique([guardianId, provider])
+  @@unique([provider, externalId])
+  @@index([schoolId, provider])
+}
+
+model Charge {
+  id              String          @id @default(cuid())
+  schoolId        String
+  school          School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  enrollmentId    String?
+  enrollment      Enrollment?     @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  guardianId      String?
+  guardian        Guardian?       @relation(fields: [guardianId], references: [id], onDelete: SetNull)
+  contractId      String?
+  contract        BillingContract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  installmentNumber Int?
+  description     String
+  baseAmount      Decimal         @db.Decimal(12, 2)
+  discountAmount  Decimal         @default(0) @db.Decimal(12, 2)
+  fineAmount      Decimal         @default(0) @db.Decimal(12, 2)
+  interestAmount  Decimal         @default(0) @db.Decimal(12, 2)
+  amount          Decimal         @db.Decimal(12, 2)
+  paidAmount      Decimal         @default(0) @db.Decimal(12, 2)
+  dueDate         DateTime
+  paidAt          DateTime?
+  status          ChargeStatus    @default(PENDING)
+  provider        PaymentProvider @default(MANUAL)
+  paymentMethod   PaymentMethod?
+  externalId      String?
+  externalStatus  String?
+  invoiceUrl      String?
+  bankSlipUrl     String?
+  pixCopyPaste    String?
+  pixQrCodeBase64 String?
+  payments        Payment[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([contractId, installmentNumber])
+  @@unique([provider, externalId])
   @@index([schoolId, status, dueDate])
+  @@index([studentId, dueDate])
+  @@index([guardianId, status])
+  @@index([enrollmentId])
+}
+
+model Payment {
+  id               String          @id @default(cuid())
+  chargeId         String
+  charge           Charge          @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  amount           Decimal         @db.Decimal(12, 2)
+  method           PaymentMethod
+  provider         PaymentProvider @default(MANUAL)
+  status           PaymentStatus   @default(RECEIVED)
+  externalId       String?
+  paidAt           DateTime        @default(now())
+  recordedByUserId String?
+  recordedBy       User?           @relation("PaymentRecordedBy", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+  note             String?
+  createdAt        DateTime        @default(now())
+
+  @@unique([provider, externalId])
+  @@index([chargeId, paidAt])
+  @@index([recordedByUserId])
+}
+
+model PaymentWebhookEvent {
+  id          String          @id @default(cuid())
+  provider    PaymentProvider
+  eventId     String
+  eventType   String
+  payload     Json
+  processedAt DateTime?
+  createdAt   DateTime        @default(now())
+
+  @@unique([provider, eventId])
+  @@index([provider, eventType, createdAt])
 }
