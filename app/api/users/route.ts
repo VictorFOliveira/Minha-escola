@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { APP_ROLES, isAppRole } from "@/lib/permissions";
 import { getSession } from "@/lib/session";
+import { assertUserLimit } from "@/lib/tenant-limits";
 
 async function requireAdminApi() {
   const session = await getSession();
@@ -52,6 +53,15 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await requireAdminApi();
   if ("error" in auth) return auth.error;
+
+  try {
+    await assertUserLimit(auth.session.schoolId);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Limite do plano atingido." },
+      { status: 409 },
+    );
+  }
 
   const body = await request.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
