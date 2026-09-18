@@ -53,6 +53,25 @@ export async function GET() {
       author: { select: { id: true, name: true, role: true } },
       targetClass: { select: { id: true, name: true, schoolYear: true } },
       attachments: true,
+      recipients: {
+        select: {
+          id: true,
+          readAt: true,
+          acknowledgedAt: true,
+          deliveries: {
+            select: {
+              channel: true,
+              status: true,
+            },
+          },
+        },
+      },
+      authorizationRequests: {
+        select: {
+          id: true,
+          status: true,
+        },
+      },
       _count: {
         select: {
           recipients: true,
