@@ -320,6 +320,17 @@ export default async function StudentPortalPage() {
       <CommunicationInbox title="Comunicados para você" />
       <PortalDocuments />
       <PrivacyPortal />
+      <section className="portal-panel">
+        <div className="portal-panel-heading">
+          <div>
+            <span className="eyebrow">CONTA</span>
+            <h2>Segurança da conta</h2>
+          </div>
+          <a className="button button--secondary button--small" href="/conta/seguranca">
+            Dispositivos e sessões
+          </a>
+        </div>
+      </section>
 
       <section className="portal-metrics">
         <article>
