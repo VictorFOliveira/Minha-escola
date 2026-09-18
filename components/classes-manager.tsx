@@ -29,15 +29,31 @@ export function ClassesManager({ canEdit }: { canEdit: boolean }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({
+    page: 1,
+    pageSize: 50,
+    total: 0,
+    pages: 1,
+  });
 
   async function load() {
     setLoading(true);
     setError("");
 
     try {
+      const query = new URLSearchParams({
+        page: String(page),
+        pageSize: "50",
+      });
+      if (search.trim()) query.set("search", search.trim());
+
       const [classResponse, teacherResponse] = await Promise.all([
-        fetch("/api/classes", { cache: "no-store" }),
-        canEdit ? fetch("/api/teachers", { cache: "no-store" }) : Promise.resolve(null),
+        fetch("/api/classes?" + query.toString(), { cache: "no-store" }),
+        canEdit
+          ? fetch("/api/teachers?all=1", { cache: "no-store" })
+          : Promise.resolve(null),
       ]);
 
       const classData = await classResponse.json();
@@ -47,6 +63,7 @@ export function ClassesManager({ canEdit }: { canEdit: boolean }) {
       }
 
       setClasses(classData.classes || []);
+      if (classData.meta) setMeta(classData.meta);
 
       if (teacherResponse) {
         const teacherData = await teacherResponse.json();
@@ -60,8 +77,12 @@ export function ClassesManager({ canEdit }: { canEdit: boolean }) {
   }
 
   useEffect(() => {
-    void load();
-  }, [canEdit]);
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [canEdit, page, search]);
 
   function openCreate() {
     setEditing(null);
@@ -147,6 +168,48 @@ export function ClassesManager({ canEdit }: { canEdit: boolean }) {
       </div>
 
       {error ? <div className="form-alert form-alert--error">{error}</div> : null}
+
+      <section className="panel">
+        <div className="toolbar">
+          <div className="search-box">
+            ⌕
+            <input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Buscar turma, série ou sala..."
+            />
+          </div>
+          <span className="record-count">{meta.total} turmas</span>
+          {meta.pages > 1 ? (
+            <div className="mini-actions">
+              <button
+                className="inline-action"
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+              >
+                Anterior
+              </button>
+              <span className="muted-small">
+                {meta.page}/{meta.pages}
+              </span>
+              <button
+                className="inline-action"
+                type="button"
+                disabled={page >= meta.pages}
+                onClick={() =>
+                  setPage((value) => Math.min(meta.pages, value + 1))
+                }
+              >
+                Próxima
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </section>
 
       {formOpen && canEdit ? (
         <section className="panel class-form-panel">
