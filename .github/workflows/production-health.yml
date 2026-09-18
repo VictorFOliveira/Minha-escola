@@ -1,0 +1,53 @@
+name: Production health monitor
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check public readiness
+        env:
+          APP_URL: ${{ secrets.PRODUCTION_APP_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$APP_URL" ]; then
+            echo "PRODUCTION_APP_URL nao configurada; monitoramento ainda nao ativado."
+            exit 0
+          fi
+          curl --fail-with-body --retry 3 --retry-all-errors \
+            --max-time 15 "${APP_URL%/}/api/health/ready"
+
+      - name: Check operational health
+        env:
+          APP_URL: ${{ secrets.PRODUCTION_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Secrets operacionais ainda nao configurados; etapa protegida ignorada."
+            exit 0
+          fi
+          BODY="$(curl --fail-with-body --retry 3 --retry-all-errors \
+            --max-time 15 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "${APP_URL%/}/api/health/ops")"
+          echo "$BODY"
+          node -e '
+            const body = JSON.parse(process.argv[1]);
+            if ((body.jobs?.failedLast24h || 0) > 0) {
+              throw new Error("Existem jobs com falha nas ultimas 24h.");
+            }
+            if (body.database?.status !== "ok") {
+              throw new Error("Banco nao esta operacional.");
+            }
+          ' "$BODY"
