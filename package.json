@@ -25,8 +25,8 @@
     "next": "^15.5.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "@aws-sdk/client-s3": "^3.914.0",
-    "@aws-sdk/s3-request-presigner": "^3.914.0",
+    "@aws-sdk/client-s3": "^3.1135.0",
+    "@aws-sdk/s3-request-presigner": "^3.1135.0",
     "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
@@ -35,7 +35,7 @@
     "@types/react-dom": "^19.1.9",
     "prisma": "^6.16.2",
     "typescript": "^5.9.2",
-    "tsx": "^4.20.6"
+    "tsx": "^4.23.13"
   },
   "engines": {
     "node": ">=22 <23"
