@@ -34,9 +34,12 @@ export async function POST(request: Request) {
 
   const response = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`
-      SELECT pg_advisory_xact_lock(
-        hashtextextended(${"asaas-event:" + eventId}, 0)
+      WITH advisory_lock AS (
+        SELECT pg_advisory_xact_lock(
+          hashtextextended(${"asaas-event:" + eventId}, 0)
+        )
       )
+      SELECT 1::int AS "locked" FROM advisory_lock
     `;
 
     const eventRecord = await tx.paymentWebhookEvent.upsert({
@@ -70,9 +73,12 @@ export async function POST(request: Request) {
     // Eventos distintos (RECEIVED/CONFIRMED/REFUNDED etc.) do mesmo
     // pagamento também precisam ser processados em sequência.
     await tx.$queryRaw`
-      SELECT pg_advisory_xact_lock(
-        hashtextextended(${"asaas-payment:" + paymentId}, 0)
+      WITH advisory_lock AS (
+        SELECT pg_advisory_xact_lock(
+          hashtextextended(${"asaas-payment:" + paymentId}, 0)
+        )
       )
+      SELECT 1::int AS "locked" FROM advisory_lock
     `;
 
     const charge = await tx.charge.findFirst({
