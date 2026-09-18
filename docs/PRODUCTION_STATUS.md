@@ -23,11 +23,33 @@ Atualizado em 18/09/2026.
 - Docker e migrations;
 - health/readiness/health operacional;
 - backup/restore scripts;
-- restore drill automatizado;
+- restore drill automatizado e validado;
 - monitoramento de produção via GitHub Actions;
 - CodeQL e dependency audit;
 - regressão HTTP;
 - teste de carga com 5.000 alunos e 600 requisições.
+
+## Validação final
+
+Em 18/09/2026 foram observados verdes:
+
+- Prisma validate/generate;
+- migration deploy em PostgreSQL vazio;
+- testes unitários e integração multi-tenant;
+- gate de performance;
+- TypeScript;
+- Next.js build production;
+- regressão HTTP com aplicação compilada;
+- migration status;
+- dependency audit em nível moderate+;
+- CodeQL;
+- Dockerfile de produção;
+- docker-compose de produção;
+- Caddyfile;
+- teste de carga de 600 requisições;
+- backup + restore drill real em segundo banco.
+
+Na última rodada de carga: **600 requisições, 0 falhas**, p95 sustentado de aproximadamente **275 ms** e p95 da rajada de 100 concorrentes de aproximadamente **482 ms**.
 
 ## Artefatos reprodutíveis
 
