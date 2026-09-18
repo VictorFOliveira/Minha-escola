@@ -24,7 +24,12 @@ type Communication = {
   expiresAt: string | null;
   author: { id: string; name: string; role: string };
   targetClass: { id: string; name: string; schoolYear: number } | null;
-  attachments: Array<{ id: string; name: string; url: string }>;
+  attachments: Array<{
+    id: string;
+    name: string;
+    url: string | null;
+    fileAssetId: string | null;
+  }>;
   recipients: Array<{
     id: string;
     readAt: string | null;
@@ -187,19 +192,75 @@ export function CommunicationManager({
     setError("");
     setMessage("");
 
-    const attachments =
-      attachmentEnabled &&
-      String(form.get("attachmentName") || "").trim() &&
-      String(form.get("attachmentUrl") || "").trim()
-        ? [
-            {
-              name: String(form.get("attachmentName") || ""),
-              url: String(form.get("attachmentUrl") || ""),
-            },
-          ]
-        : [];
+    const attachments: Array<{
+      name: string;
+      url?: string;
+      fileAssetId?: string;
+      mimeType?: string;
+    }> = [];
 
     try {
+      if (attachmentEnabled) {
+        const attachmentName = String(form.get("attachmentName") || "").trim();
+        const attachmentUrl = String(form.get("attachmentUrl") || "").trim();
+        const attachmentFile = form.get("attachmentFile");
+
+        if (attachmentFile instanceof File && attachmentFile.size > 0) {
+          const prepareResponse = await fetch("/api/files/upload-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              originalName: attachmentFile.name,
+              mimeType: attachmentFile.type,
+              sizeBytes: attachmentFile.size,
+            }),
+          });
+          const prepareData = await prepareResponse.json();
+
+          if (!prepareResponse.ok) {
+            setError(
+              prepareData.error || "Não foi possível preparar o upload do anexo.",
+            );
+            return;
+          }
+
+          const uploadResponse = await fetch(prepareData.uploadUrl, {
+            method: "PUT",
+            headers: prepareData.requiredHeaders,
+            body: attachmentFile,
+          });
+
+          if (!uploadResponse.ok) {
+            setError("Falha ao enviar o anexo para o storage privado.");
+            return;
+          }
+
+          const completeResponse = await fetch(
+            "/api/files/" + prepareData.asset.id + "/complete",
+            { method: "POST" },
+          );
+          const completeData = await completeResponse.json();
+
+          if (!completeResponse.ok) {
+            setError(
+              completeData.error || "Não foi possível confirmar o upload do anexo.",
+            );
+            return;
+          }
+
+          attachments.push({
+            name: attachmentName || attachmentFile.name,
+            fileAssetId: prepareData.asset.id,
+            mimeType: attachmentFile.type,
+          });
+        } else if (attachmentUrl) {
+          attachments.push({
+            name: attachmentName || "Documento externo",
+            url: attachmentUrl,
+          });
+        }
+      }
+
       const response = await fetch("/api/communications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -539,7 +600,7 @@ export function CommunicationManager({
                 checked={attachmentEnabled}
                 onChange={(event) => setAttachmentEnabled(event.target.checked)}
               />
-              Adicionar documento/link
+              Adicionar anexo
             </label>
 
             {attachmentEnabled ? (
@@ -549,7 +610,15 @@ export function CommunicationManager({
                   <input name="attachmentName" placeholder="Ex.: Regulamento" />
                 </label>
                 <label className="communication-field--wide">
-                  URL do documento
+                  Arquivo privado
+                  <input
+                    name="attachmentFile"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.docx,.xlsx"
+                  />
+                </label>
+                <label className="communication-field--wide">
+                  Ou URL externa
                   <input
                     name="attachmentUrl"
                     type="url"
