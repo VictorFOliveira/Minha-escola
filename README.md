@@ -91,6 +91,7 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - /dashboard/escola
 - /dashboard/academico
 - /dashboard/avaliacoes
+- /dashboard/boletins
 - /dashboard/diario
 - /dashboard/frequencia — redireciona para o novo diário
 - /portal/aluno
@@ -180,13 +181,32 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - aluno nunca usa o dashboard administrativo;
 - autorização é feita no servidor e não apenas por ocultação de menu.
 
+### Fase 7 — Boletins, recuperação e resultado final ✅
+- política acadêmica por escola e ano letivo;
+- média mínima configurável;
+- frequência mínima configurável;
+- recuperação configurável;
+- três modos de cálculo de recuperação;
+- peso por período letivo;
+- fechamento de média por disciplina e período;
+- bloqueio de fechamento com avaliações pendentes;
+- média anual ponderada;
+- frequência consolidada por disciplina;
+- resultado anual da disciplina;
+- lançamento de recuperação;
+- fechamento final da matrícula;
+- observação final da coordenação;
+- boletim oficial no Portal do Aluno;
+- professor limitado aos resultados das disciplinas atribuídas;
+- fórmula compartilhada entre portal e fechamento oficial.
+
 ## Documentação técnica
 
 - [Fase 6 — Diário do Professor e Frequência](docs/FASE_6_DIARIO_FREQUENCIA.md)
+- [Fase 7 — Boletins e Resultado Final](docs/FASE_7_BOLETINS_RESULTADOS.md)
 
 ## Próximas fases
 
-7. Boletim, fechamento de médias, recuperação e resultado final.
 8. Financeiro completo e pagamentos.
 9. Portal do responsável e comunicação.
 10. Secretaria e documentos oficiais.
