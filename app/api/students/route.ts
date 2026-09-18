@@ -116,18 +116,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Já existe um aluno com esta matrícula." }, { status: 409 });
   }
 
-  const student = await prisma.student.create({
-    data: {
-      schoolId: session.schoolId,
-      name,
-      registration,
-      document: body?.document?.trim() || null,
-      phone: body?.phone?.trim() || null,
-      email: body?.email?.trim()?.toLowerCase() || null,
-      address: body?.address?.trim() || null,
-      birthDate,
-    },
-  });
+  let student;
+  try {
+    student = await prisma.student.create({
+      data: {
+        schoolId: session.schoolId,
+        name,
+        registration,
+        document: body?.document?.trim() || null,
+        phone: body?.phone?.trim() || null,
+        email: body?.email?.trim()?.toLowerCase() || null,
+        address: body?.address?.trim() || null,
+        birthDate,
+      },
+    });
+  } catch (error) {
+    if ((error as { code?: string })?.code === "P2002") {
+      return NextResponse.json(
+        { error: "Já existe um aluno com esta matrícula." },
+        { status: 409 },
+      );
+    }
+    throw error;
+  }
 
   const responseBody = { student };
 
