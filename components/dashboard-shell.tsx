@@ -28,6 +28,7 @@ const navItems: Array<{
   { href: "/dashboard/auditoria", label: "Auditoria", icon: "◎", roles: ["ADMIN"] },
   { href: "/dashboard/privacidade", label: "Privacidade", icon: "◉", roles: ["ADMIN"] },
   { href: "/dashboard/dados", label: "Dados", icon: "⇅", roles: ["ADMIN", "COORDINATOR", "SECRETARY", "FINANCE"] },
+  { href: "/dashboard/integracoes", label: "Integrações", icon: "↔", roles: ["ADMIN"] },
   { href: "/conta/seguranca", label: "Segurança", icon: "⌾", roles: ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER", "FINANCE"] },
 ];
 
