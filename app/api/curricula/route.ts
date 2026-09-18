@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 
-const readRoles = ["ADMIN", "SECRETARY", "TEACHER"];
-const writeRoles = ["ADMIN", "SECRETARY"];
+const readRoles = ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"];
+const writeRoles = ["ADMIN", "COORDINATOR", "SECRETARY"];
 
 type SubjectInput = {
   subjectId?: unknown;
