@@ -148,6 +148,7 @@ export async function PUT(request: Request) {
           trialEndsAt,
           currentPeriodStart: now,
           currentPeriodEnd: trialEndsAt,
+          nextBillingAt: trialEndsAt,
         },
       });
     }
