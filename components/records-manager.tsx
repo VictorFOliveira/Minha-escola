@@ -109,13 +109,28 @@ export function RecordsManager({ kind }: { kind: Kind }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({
+    page: 1,
+    pageSize: 50,
+    total: 0,
+    pages: 1,
+  });
 
   async function load() {
     setLoading(true);
     setError("");
 
     try {
-      const response = await fetch(cfg.endpoint, { cache: "no-store" });
+      const query = new URLSearchParams({
+        page: String(page),
+        pageSize: "50",
+      });
+      if (search.trim()) query.set("search", search.trim());
+
+      const response = await fetch(cfg.endpoint + "?" + query.toString(), {
+        cache: "no-store",
+      });
       const data = await response.json();
 
       if (!response.ok) {
@@ -124,9 +139,10 @@ export function RecordsManager({ kind }: { kind: Kind }) {
       }
 
       setItems(data[cfg.responseKey] || []);
+      if (data.meta) setMeta(data.meta);
 
       if (kind === "guardians") {
-        const studentResponse = await fetch("/api/students", { cache: "no-store" });
+        const studentResponse = await fetch("/api/students?all=1", { cache: "no-store" });
         const studentData = await studentResponse.json();
         if (studentResponse.ok) setStudents(studentData.students || []);
       }
@@ -138,8 +154,12 @@ export function RecordsManager({ kind }: { kind: Kind }) {
   }
 
   useEffect(() => {
-    void load();
-  }, [kind]);
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [kind, page, search]);
 
   const visibleItems = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -357,11 +377,39 @@ export function RecordsManager({ kind }: { kind: Kind }) {
             ⌕
             <input
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
               placeholder={"Buscar em " + cfg.title.toLowerCase() + "..."}
             />
           </div>
-          <span className="record-count">{visibleItems.length} registros</span>
+          <span className="record-count">{meta.total} registros</span>
+          {meta.pages > 1 ? (
+            <div className="mini-actions">
+              <button
+                className="inline-action"
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+              >
+                Anterior
+              </button>
+              <span className="muted-small">
+                {meta.page}/{meta.pages}
+              </span>
+              <button
+                className="inline-action"
+                type="button"
+                disabled={page >= meta.pages}
+                onClick={() =>
+                  setPage((value) => Math.min(meta.pages, value + 1))
+                }
+              >
+                Próxima
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {loading ? (
