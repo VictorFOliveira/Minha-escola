@@ -16,7 +16,11 @@ export async function POST(request: Request) {
   const user = await prisma.user.findUnique({
     where: { email },
     include: {
-      school: true,
+      school: {
+        include: {
+          subscription: true,
+        },
+      },
       enrollment: {
         include: {
           class: true,
@@ -28,6 +32,28 @@ export async function POST(request: Request) {
 
   if (!user || !user.active || !isAppRole(user.role)) {
     return NextResponse.json({ error: "E-mail ou senha inválidos." }, { status: 401 });
+  }
+
+  if (
+    ["SUSPENDED", "CANCELLED"].includes(user.school.lifecycleStatus) ||
+    ["SUSPENDED", "CANCELLED"].includes(
+      user.school.subscription?.status || "",
+    )
+  ) {
+    return NextResponse.json(
+      { error: "O acesso desta instituição está suspenso. Contate o suporte da plataforma." },
+      { status: 403 },
+    );
+  }
+
+  if (
+    user.school.lifecycleStatus === "ONBOARDING" &&
+    user.role !== "ADMIN"
+  ) {
+    return NextResponse.json(
+      { error: "A instituição ainda está concluindo a implantação." },
+      { status: 403 },
+    );
   }
 
   if (
@@ -82,7 +108,10 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({
-    homePath: homePathForRole(user.role),
+    homePath:
+      user.role === "ADMIN" && !user.school.onboardingCompletedAt
+        ? "/dashboard/onboarding"
+        : homePathForRole(user.role),
     user: {
       id: user.id,
       name: user.name,
