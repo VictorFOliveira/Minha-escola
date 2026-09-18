@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./phase2.css";
+import "./phase3.css";
 
 export const metadata: Metadata = {
-  title: "Minha Escola",
-  description: "Gestão escolar simples, moderna e integrada.",
+  title: "Minha Escola SaaS",
+  description: "SaaS de gestão escolar simples, moderna e integrada.",
 };
 
 export default function RootLayout({
