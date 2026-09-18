@@ -2,30 +2,54 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { assertStudentLimit } from "@/lib/tenant-limits";
+import { paginationFromRequest, paginationMeta } from "@/lib/pagination";
 
 const allowedRoles = ["ADMIN", "SECRETARY"];
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   if (!allowedRoles.includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
 
-  const students = await prisma.student.findMany({
-    where: { schoolId: session.schoolId },
-    orderBy: { name: "asc" },
-    include: {
-      guardians: {
-        include: { guardian: true },
-      },
-      enrollments: {
-        include: { class: true },
-        orderBy: { startedAt: "desc" },
-        take: 1,
-      },
-    },
-  });
+  const pagination = paginationFromRequest(request);
+  const where = {
+    schoolId: session.schoolId,
+    ...(pagination.search
+      ? {
+          OR: [
+            { name: { contains: pagination.search, mode: "insensitive" as const } },
+            { registration: { contains: pagination.search, mode: "insensitive" as const } },
+            { document: { contains: pagination.search, mode: "insensitive" as const } },
+            { email: { contains: pagination.search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
 
-  return NextResponse.json({ students });
+  const [students, total] = await Promise.all([
+    prisma.student.findMany({
+      where,
+      orderBy: { name: "asc" },
+      skip: pagination.skip,
+      take: pagination.take,
+      include: {
+        guardians: {
+          include: { guardian: true },
+        },
+        enrollments: {
+          include: { class: true },
+          orderBy: { startedAt: "desc" },
+          take: 1,
+        },
+      },
+    }),
+    prisma.student.count({ where }),
+  ]);
+
+  return NextResponse.json({
+    students,
+    meta: paginationMeta(total, pagination.page, pagination.pageSize),
+  });
 }
 
 export async function POST(request: Request) {
