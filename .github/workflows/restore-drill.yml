@@ -4,6 +4,13 @@ on:
   schedule:
     - cron: "23 7 1 * *"
   workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "prisma/**"
+      - "scripts/backup-postgres.sh"
+      - "scripts/restore-postgres.sh"
+      - ".github/workflows/restore-drill.yml"
 
 permissions:
   contents: read
