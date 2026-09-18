@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
-import { isAppRole } from "@/lib/permissions";
+import { homePathForRole, isAppRole } from "@/lib/permissions";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -10,10 +10,7 @@ export async function POST(request: Request) {
   const password = typeof body?.password === "string" ? body.password : "";
 
   if (!email || !password) {
-    return NextResponse.json(
-      { error: "Informe e-mail e senha." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Informe e-mail e senha." }, { status: 400 });
   }
 
   const user = await prisma.user.findUnique({
@@ -22,19 +19,27 @@ export async function POST(request: Request) {
   });
 
   if (!user || !user.active || !isAppRole(user.role)) {
+    return NextResponse.json({ error: "E-mail ou senha inválidos." }, { status: 401 });
+  }
+
+  if (user.role === "STUDENT" && !user.studentId) {
     return NextResponse.json(
-      { error: "E-mail ou senha inválidos." },
-      { status: 401 },
+      { error: "A conta do aluno ainda não está vinculada a um cadastro acadêmico." },
+      { status: 403 },
+    );
+  }
+
+  if (user.role === "GUARDIAN" && !user.guardianId) {
+    return NextResponse.json(
+      { error: "A conta do responsável ainda não está vinculada a um cadastro." },
+      { status: 403 },
     );
   }
 
   const validPassword = await bcrypt.compare(password, user.password);
 
   if (!validPassword) {
-    return NextResponse.json(
-      { error: "E-mail ou senha inválidos." },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: "E-mail ou senha inválidos." }, { status: 401 });
   }
 
   await prisma.user.update({
@@ -49,9 +54,12 @@ export async function POST(request: Request) {
     name: user.name,
     email: user.email,
     role: user.role,
+    studentId: user.studentId,
+    guardianId: user.guardianId,
   });
 
   return NextResponse.json({
+    homePath: homePathForRole(user.role),
     user: {
       id: user.id,
       name: user.name,
