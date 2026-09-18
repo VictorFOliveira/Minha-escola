@@ -12,6 +12,9 @@ export default async function SuperadminPage() {
           <h1>Superadmin</h1>
         </div>
         <div className="superadmin-user">
+          <a className="button button--secondary button--small" href="/superadmin/status">
+            Status
+          </a>
           <a className="button button--secondary button--small" href="/superadmin/seguranca">
             Segurança
           </a>
