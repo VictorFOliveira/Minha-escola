@@ -1,0 +1,284 @@
+.report-card-manager {
+  display: grid;
+  gap: 22px;
+}
+
+.report-context,
+.academic-policy-panel {
+  border-color: #dce6f5;
+}
+
+.report-class-select {
+  display: grid;
+  gap: 7px;
+  max-width: 420px;
+  color: #41506a;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.report-class-select select,
+.academic-policy-form input,
+.academic-policy-form select,
+.final-enrollment-list input,
+.recovery-input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #d8e0ea;
+  border-radius: 10px;
+  background: white;
+  color: var(--text);
+  padding: 0 11px;
+  outline: none;
+}
+
+.academic-policy-form {
+  display: grid;
+  grid-template-columns: 150px 180px minmax(230px, 1fr) auto auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.academic-policy-form label {
+  display: grid;
+  gap: 7px;
+  color: #41506a;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.policy-check {
+  display: flex !important;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px !important;
+  min-height: 42px;
+}
+
+.policy-check input {
+  width: 16px;
+  min-height: 16px;
+  height: 16px;
+}
+
+.subject-tab-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+
+.subject-tab {
+  flex: 0 0 auto;
+  min-width: 150px;
+  border: 1px solid #e1e7ef;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 11px 13px;
+  text-align: left;
+  display: grid;
+  gap: 3px;
+  color: #41506a;
+}
+
+.subject-tab strong {
+  font-size: 11px;
+}
+
+.subject-tab small {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.subject-tab--active {
+  border-color: #7da0f9;
+  background: #edf3ff;
+  color: #254f9c;
+}
+
+.period-closing-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.period-closing-grid article {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 9px;
+  align-items: center;
+  padding: 13px;
+  border-radius: 13px;
+  background: #f8fafc;
+  border: 1px solid #e7ebf1;
+}
+
+.period-closing-grid article > span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #edf3ff;
+  color: #315fae;
+  font-weight: 900;
+  font-size: 10px;
+}
+
+.period-closing-grid article > div {
+  display: grid;
+  gap: 3px;
+}
+
+.period-closing-grid strong {
+  font-size: 11px;
+}
+
+.period-closing-grid small {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.period-closing-grid .button {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.subject-close-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  padding: 15px 16px;
+  border-radius: 13px;
+  background: #101b36;
+  color: white;
+  margin-bottom: 16px;
+}
+
+.subject-close-bar > div {
+  display: grid;
+  gap: 4px;
+}
+
+.subject-close-bar span {
+  color: #b9c6da;
+  font-size: 10px;
+}
+
+.report-table th,
+.report-table td,
+.official-report-table th,
+.official-report-table td {
+  white-space: nowrap;
+}
+
+.recovery-input {
+  min-width: 86px;
+  width: 86px;
+  min-height: 34px;
+  height: 34px;
+  padding: 0 8px;
+  margin: 2px 0;
+}
+
+.report-status--failed {
+  background: #feeceb;
+  color: #b83b35;
+}
+
+.final-enrollment-list {
+  display: grid;
+}
+
+.final-enrollment-list article {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) 130px minmax(220px, 1.2fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 13px 0;
+  border-top: 1px solid #edf0f4;
+}
+
+.final-enrollment-list article:first-child {
+  border-top: 0;
+}
+
+.final-enrollment-list article > div {
+  display: grid;
+  gap: 3px;
+}
+
+.final-enrollment-list small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.portal-panel-heading--split {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.final-decision-note {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e7ebf1;
+}
+
+.final-decision-note strong {
+  font-size: 11px;
+}
+
+.final-decision-note p {
+  margin: 5px 0 0;
+  color: #536174;
+  line-height: 1.55;
+  font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+  .academic-policy-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .period-closing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .final-enrollment-list article {
+    grid-template-columns: 1fr 130px;
+  }
+
+  .final-enrollment-list article input,
+  .final-enrollment-list article .button {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 700px) {
+  .academic-policy-form,
+  .period-closing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .subject-close-bar,
+  .portal-panel-heading--split {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .final-enrollment-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .final-enrollment-list article input,
+  .final-enrollment-list article .button {
+    grid-column: auto;
+  }
+}
