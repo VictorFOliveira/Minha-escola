@@ -785,6 +785,7 @@ model Communication {
   school                School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   authorUserId          String
   author                User                  @relation("CommunicationAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  systemKey             String?
   title                 String
   content               String
   priority              CommunicationPriority @default(NORMAL)
@@ -805,6 +806,7 @@ model Communication {
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 
+  @@unique([schoolId, systemKey])
   @@index([schoolId, status, publishAt])
   @@index([targetClassId])
   @@index([targetEnrollmentId])
