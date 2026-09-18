@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { publishCommunication } from "@/lib/communication";
+import { auditUserAction } from "@/lib/audit";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -36,6 +37,16 @@ export async function POST(_: Request, context: Context) {
 
   try {
     const recipients = await publishCommunication(id, session);
+
+    await auditUserAction({
+      schoolId: session.schoolId,
+      userId: session.id,
+      action: "COMMUNICATION_PUBLISH",
+      entityType: "Communication",
+      entityId: id,
+      metadata: { recipients },
+    }).catch(() => null);
+
     return NextResponse.json({ ok: true, recipients });
   } catch (error) {
     return NextResponse.json(
