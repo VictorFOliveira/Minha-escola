@@ -34,7 +34,12 @@ export async function PUT(request: Request, context: Context) {
     return NextResponse.json({ error: "Informe a lista de horários." }, { status: 400 });
   }
 
-  const slots = body.slots.map((slot: SlotInput) => ({
+  const slots: Array<{
+    weekday: number;
+    startTime: string;
+    endTime: string;
+    room: string | null;
+  }> = (body.slots as SlotInput[]).map((slot) => ({
     weekday: Number(slot?.weekday),
     startTime: typeof slot?.startTime === "string" ? slot.startTime.trim() : "",
     endTime: typeof slot?.endTime === "string" ? slot.endTime.trim() : "",
