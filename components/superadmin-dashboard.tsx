@@ -25,9 +25,19 @@ type School = {
   subscription: {
     id: string;
     status: string;
+    provider: "MANUAL" | "ASAAS" | "EXTERNAL";
+    billingInterval: "MONTHLY" | "ANNUAL";
     trialEndsAt: string | null;
     currentPeriodEnd: string | null;
+    nextBillingAt: string | null;
     plan: Plan;
+    invoices: Array<{
+      id: string;
+      status: string;
+      amount: string | number;
+      dueDate: string;
+      invoiceUrl: string | null;
+    }>;
   } | null;
   _count: {
     students: number;
@@ -164,6 +174,8 @@ export function SuperadminDashboard() {
           adminEmail: String(form.get("adminEmail") || ""),
           adminPassword: String(form.get("adminPassword") || ""),
           planId: String(form.get("planId") || ""),
+          provider: String(form.get("provider") || "MANUAL"),
+          billingInterval: String(form.get("billingInterval") || "MONTHLY"),
         }),
       });
       const data = await response.json();
@@ -190,6 +202,8 @@ export function SuperadminDashboard() {
       lifecycleStatus?: string;
       subscriptionStatus?: string;
       planId?: string;
+      provider?: string;
+      billingInterval?: string;
     },
   ) {
     setWorking("school:" + school.id);
@@ -210,6 +224,36 @@ export function SuperadminDashboard() {
       }
 
       setMessage("Tenant atualizado.");
+      await load();
+    } catch {
+      setError("Não foi possível conectar ao servidor.");
+    } finally {
+      setWorking("");
+    }
+  }
+
+  async function issueInvoice(school: School) {
+    setWorking("invoice:" + school.id);
+    setError("");
+    setMessage("");
+
+    try {
+      const response = await fetch(
+        "/api/platform/schools/" + school.id + "/billing/issue",
+        { method: "POST" },
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Não foi possível emitir a cobrança.");
+        return;
+      }
+
+      setMessage(
+        data.invoice
+          ? "Cobrança da plataforma emitida."
+          : "Nenhuma cobrança precisava ser emitida.",
+      );
       await load();
     } catch {
       setError("Não foi possível conectar ao servidor.");
@@ -359,6 +403,20 @@ export function SuperadminDashboard() {
               </select>
             </label>
             <label>
+              Cobrança do SaaS
+              <select name="provider" defaultValue="MANUAL">
+                <option value="MANUAL">Manual</option>
+                <option value="ASAAS">Asaas da plataforma</option>
+              </select>
+            </label>
+            <label>
+              Ciclo
+              <select name="billingInterval" defaultValue="MONTHLY">
+                <option value="MONTHLY">Mensal</option>
+                <option value="ANNUAL">Anual</option>
+              </select>
+            </label>
+            <label>
               Administrador
               <input name="adminName" required />
             </label>
@@ -441,6 +499,79 @@ export function SuperadminDashboard() {
                     ))}
                 </select>
               </label>
+
+              {school.subscription ? (
+                <>
+                  <label>
+                    Cobrança
+                    <select
+                      value={school.subscription.provider}
+                      disabled={working === "school:" + school.id}
+                      onChange={(event) =>
+                        void updateSchool(school, {
+                          provider: event.target.value,
+                        })
+                      }
+                    >
+                      <option value="MANUAL">Manual</option>
+                      <option value="ASAAS">Asaas</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    Ciclo
+                    <select
+                      value={school.subscription.billingInterval}
+                      disabled={working === "school:" + school.id}
+                      onChange={(event) =>
+                        void updateSchool(school, {
+                          billingInterval: event.target.value,
+                        })
+                      }
+                    >
+                      <option value="MONTHLY">Mensal</option>
+                      <option value="ANNUAL">Anual</option>
+                    </select>
+                  </label>
+
+                  <div className="platform-billing-actions">
+                    <small>
+                      Próxima:{" "}
+                      {school.subscription.nextBillingAt
+                        ? new Intl.DateTimeFormat("pt-BR").format(
+                            new Date(school.subscription.nextBillingAt),
+                          )
+                        : "—"}
+                    </small>
+                    {school.subscription.invoices[0] ? (
+                      <small>
+                        Última fatura: {school.subscription.invoices[0].status} •{" "}
+                        {money(school.subscription.invoices[0].amount)}
+                      </small>
+                    ) : null}
+                    {school.subscription.invoices[0]?.invoiceUrl ? (
+                      <a
+                        className="inline-action"
+                        href={school.subscription.invoices[0].invoiceUrl!}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Abrir fatura
+                      </a>
+                    ) : null}
+                    {school.subscription.provider === "ASAAS" ? (
+                      <button
+                        className="button button--secondary button--small"
+                        type="button"
+                        disabled={working === "invoice:" + school.id}
+                        onClick={() => void issueInvoice(school)}
+                      >
+                        Emitir cobrança
+                      </button>
+                    ) : null}
+                  </div>
+                </>
+              ) : null}
             </article>
           ))}
         </div>
