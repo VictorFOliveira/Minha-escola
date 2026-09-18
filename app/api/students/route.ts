@@ -95,9 +95,17 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   const registration = typeof body?.registration === "string" ? body.registration.trim() : "";
+  const birthDate = body?.birthDate ? new Date(body.birthDate) : null;
 
   if (!name || !registration) {
     return NextResponse.json({ error: "Nome e matrícula são obrigatórios." }, { status: 400 });
+  }
+
+  if (birthDate && Number.isNaN(birthDate.getTime())) {
+    return NextResponse.json(
+      { error: "Data de nascimento inválida." },
+      { status: 400 },
+    );
   }
 
   const existing = await prisma.student.findFirst({
@@ -117,7 +125,7 @@ export async function POST(request: Request) {
       phone: body?.phone?.trim() || null,
       email: body?.email?.trim()?.toLowerCase() || null,
       address: body?.address?.trim() || null,
-      birthDate: body?.birthDate ? new Date(body.birthDate) : null,
+      birthDate,
     },
   });
 
