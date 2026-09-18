@@ -314,6 +314,12 @@ enum ImportJobStatus {
   FAILED
 }
 
+enum SystemJobStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
 model School {
   id        String       @id @default(cuid())
   name      String
@@ -1439,6 +1445,21 @@ model ImportJob {
   completedAt     DateTime?
 
   @@index([schoolId, status, createdAt])
+}
+
+
+model SystemJobRun {
+  id         String          @id @default(cuid())
+  jobName    String
+  status     SystemJobStatus @default(RUNNING)
+  startedAt  DateTime        @default(now())
+  finishedAt DateTime?
+  result     Json?
+  error      String?
+  createdAt  DateTime        @default(now())
+
+  @@index([jobName, startedAt])
+  @@index([status, startedAt])
 }
 
 model BillingPlan {
