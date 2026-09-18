@@ -305,6 +305,24 @@ A regressão HTTP ponta a ponta foi executada com Next.js compilado e PostgreSQL
 - [Resultado do teste de carga](docs/LOAD_TEST_RESULTS_600.md)
 - [Runbook de produção](docs/PRODUCTION_RUNBOOK.md)
 - [Checklist de release](docs/RELEASE_CHECKLIST.md)
+- [Backup e restauração](docs/BACKUP_RESTORE.md)
+
+## Validação de produção
+
+Em 18/09/2026, o pacote final foi validado com PostgreSQL real e aplicação compilada:
+
+- migration deploy + migration status verdes;
+- testes unitários, integração e isolamento multi-tenant verdes;
+- TypeScript e build production verdes;
+- regressão HTTP ponta a ponta verde;
+- dependency audit moderate+ verde;
+- CodeQL verde;
+- Dockerfile, Compose e Caddy validados;
+- imagem Docker de produção construída com sucesso;
+- 600 requisições mistas com 0 falhas, incluindo rajada de 100 concorrentes;
+- backup com pg_dump + restauração em segundo banco + validação de migrations: verde.
+
+Detalhes: [Status de produção](docs/PRODUCTION_STATUS.md), [teste de carga](docs/LOAD_TEST_RESULTS_600.md) e [backup/restore](docs/BACKUP_RESTORE.md).
 
 ## Estado do produto
 
