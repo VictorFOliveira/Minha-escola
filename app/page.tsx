@@ -75,7 +75,7 @@ export default function HomePage() {
           {[
             ["01", "Alunos e responsáveis", "Cadastros reais, contatos, documentos e vínculos familiares."],
             ["02", "Professores e equipe", "Gestão de docentes, funcionários, funções e situação cadastral."],
-            ["03", "Turmas e matrículas", "Turmas reais, vagas, matrícula, rematrícula e histórico por ano letivo."],
+            ["03", "Turmas e matrículas", "Turmas reais, vagas, matrícula, rematrícula, diário e frequência por disciplina."],
             ["04", "Financeiro", "Base para mensalidades, recebimentos e inadimplência."],
             ["05", "Acesso por perfil", "Administrador, coordenação, secretaria, professor, financeiro, aluno e responsável."],
             ["06", "Multi-escola", "Arquitetura SaaS preparada para atender várias instituições."],
@@ -101,7 +101,8 @@ export default function HomePage() {
             <p><strong>Fase 3 concluída</strong><span>Cadastros reais de escola, alunos, responsáveis, professores e funcionários.</span></p>
             <p><strong>Fase 4 concluída</strong><span>Turmas reais, matrículas, rematrículas, capacidade e histórico escolar.</span></p>
             <p><strong>Fase 5 concluída</strong><span>Disciplinas, períodos, grade curricular, horários, avaliações, notas e portal acadêmico do aluno.</span></p>
-            <p><strong>Próxima fase</strong><span>Frequência por disciplina e diário completo do professor.</span></p>
+            <p><strong>Fase 6 concluída</strong><span>Diário do professor, aulas por disciplina, conteúdo ministrado, tarefa e frequência individual por aula.</span></p>
+            <p><strong>Próxima fase</strong><span>Boletim, fechamento de médias, recuperação e consolidação do desempenho.</span></p>
           </div>
         </div>
       </section>
