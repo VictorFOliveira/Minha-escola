@@ -22,10 +22,21 @@ export async function GET() {
   if (!readRoles.includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
 
   const classes = await prisma.classGroup.findMany({
-    where: { schoolId: session.schoolId },
+    where: {
+      schoolId: session.schoolId,
+      ...(session.role === "TEACHER" && session.teacherId
+        ? {
+            OR: [
+              { teacherId: session.teacherId },
+              { classSubjects: { some: { teacherId: session.teacherId } } },
+            ],
+          }
+        : {}),
+    },
     orderBy: [{ schoolYear: "desc" }, { gradeLevel: "asc" }, { name: "asc" }],
     include: {
       teacher: true,
+      curriculum: true,
       _count: { select: { enrollments: { where: { status: { in: ["ACTIVE", "PENDING"] } } } } },
     },
   });
