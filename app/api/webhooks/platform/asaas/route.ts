@@ -35,9 +35,12 @@ export async function POST(request: Request) {
 
   const result = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`
-      SELECT pg_advisory_xact_lock(
-        hashtextextended(${"platform-asaas-event:" + eventId}, 0)
+      WITH advisory_lock AS (
+        SELECT pg_advisory_xact_lock(
+          hashtextextended(${"platform-asaas-event:" + eventId}, 0)
+        )
       )
+      SELECT 1::int AS "locked" FROM advisory_lock
     `;
 
     const event = await tx.platformWebhookEvent.upsert({
@@ -75,9 +78,12 @@ export async function POST(request: Request) {
     }
 
     await tx.$queryRaw`
-      SELECT pg_advisory_xact_lock(
-        hashtextextended(${"platform-asaas-payment:" + paymentId}, 0)
+      WITH advisory_lock AS (
+        SELECT pg_advisory_xact_lock(
+          hashtextextended(${"platform-asaas-payment:" + paymentId}, 0)
+        )
       )
+      SELECT 1::int AS "locked" FROM advisory_lock
     `;
 
     const invoice = await tx.platformInvoice.findFirst({
