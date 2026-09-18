@@ -18,12 +18,87 @@ async function main() {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
+  const starter = await prisma.saaSPlan.upsert({
+    where: { code: "STARTER" },
+    update: {
+      name: "Starter",
+      monthlyPrice: 199,
+      maxStudents: 300,
+      maxUsers: 25,
+      active: true,
+    },
+    create: {
+      code: "STARTER",
+      name: "Starter",
+      description: "Plano inicial para escolas de pequeno e médio porte.",
+      monthlyPrice: 199,
+      annualPrice: 1990,
+      maxStudents: 300,
+      maxUsers: 25,
+      features: {
+        academic: true,
+        finance: true,
+        communication: true,
+        documents: true,
+      },
+    },
+  });
+
+  await prisma.saaSPlan.upsert({
+    where: { code: "PRO" },
+    update: {
+      name: "Pro",
+      monthlyPrice: 399,
+      maxStudents: 1000,
+      maxUsers: 80,
+      active: true,
+    },
+    create: {
+      code: "PRO",
+      name: "Pro",
+      description: "Plano ampliado para operações escolares maiores.",
+      monthlyPrice: 399,
+      annualPrice: 3990,
+      maxStudents: 1000,
+      maxUsers: 80,
+      features: {
+        academic: true,
+        finance: true,
+        communication: true,
+        documents: true,
+        prioritySupport: true,
+      },
+    },
+  });
+
   const school = await prisma.school.upsert({
     where: { document: "DEMO-MINHA-ESCOLA" },
-    update: { name: schoolName },
+    update: {
+      name: schoolName,
+      slug: "colegio-demonstracao",
+      lifecycleStatus: "ACTIVE",
+      onboardingCompletedAt: new Date(),
+    },
     create: {
       name: schoolName,
+      slug: "colegio-demonstracao",
       document: "DEMO-MINHA-ESCOLA",
+      lifecycleStatus: "ACTIVE",
+      onboardingCompletedAt: new Date(),
+    },
+  });
+
+  await prisma.schoolSubscription.upsert({
+    where: { schoolId: school.id },
+    update: {
+      planId: starter.id,
+      status: "ACTIVE",
+    },
+    create: {
+      schoolId: school.id,
+      planId: starter.id,
+      status: "ACTIVE",
+      currentPeriodStart: new Date(),
     },
   });
 
@@ -46,9 +121,36 @@ async function main() {
     },
   });
 
+  const platformEmail = process.env.SEED_PLATFORM_ADMIN_EMAIL
+    ?.trim()
+    .toLowerCase();
+  const platformPassword = process.env.SEED_PLATFORM_ADMIN_PASSWORD;
+
+  if (platformEmail && platformPassword && platformPassword.length >= 10) {
+    const platformHash = await bcrypt.hash(platformPassword, 12);
+
+    await prisma.platformAdmin.upsert({
+      where: { email: platformEmail },
+      update: {
+        name: "Platform Admin",
+        password: platformHash,
+        active: true,
+      },
+      create: {
+        name: "Platform Admin",
+        email: platformEmail,
+        password: platformHash,
+      },
+    });
+  }
+
   console.log("Seed concluído.");
   console.log("Escola:", school.name);
   console.log("Administrador:", email);
+  console.log("Planos SaaS: STARTER e PRO");
+  if (platformEmail && platformPassword?.length >= 10) {
+    console.log("Superadmin:", platformEmail);
+  }
 }
 
 main()
