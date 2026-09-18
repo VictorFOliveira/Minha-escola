@@ -1,102 +1,94 @@
 # Pendências conhecidas — Minha Escola
 
-Atualizado em 18/09/2026 após revisão do `main`.
+Atualizado em 18/09/2026 após remoção dos mocks do dashboard.
 
 ## Resumo
 
-As 11 fases funcionais, hardening, migrations, regressão HTTP, segurança, Docker, backup/restore e teste de carga estão implementados e validados no ambiente de CI.
+As 11 fases funcionais, hardening, migrations, regressão HTTP, segurança, Docker, backup/restore e teste de carga estão implementados.
 
-O projeto deve ser tratado como **release candidate pronto para homologação**, e não como go-live concluído, até fechar os itens abaixo.
+A revisão final de código também foi fechada:
 
-## P0 — fechar antes de produção real
+- dashboard inicial usa dados reais do PostgreSQL e respeita o tenant;
+- métricas são filtradas por perfil;
+- professor enxerga somente as próprias turmas/frequência;
+- aluno é direcionado para `/portal/aluno`;
+- responsável é direcionado para `/portal/responsavel`;
+- `lib/mock-data.ts` foi removido;
+- landing page não informa mais que as fases ainda estão em construção.
 
-### 1. Dashboard inicial ainda usa dados fictícios
+O estado do produto agora é **pronto para homologação final em infraestrutura real**.
 
-`app/dashboard/page.tsx` importa `@/lib/mock-data`.
+## O que ainda falta para o go-live
 
-Hoje os cards de métricas, alunos recentes, atividade e o gráfico semanal exibidos na home do dashboard são dados sintéticos. Os módulos de alunos, turmas, financeiro, acadêmico e demais áreas já usam dados persistidos, mas o resumo da home ainda precisa consultar o PostgreSQL.
+Esses itens dependem do ambiente contratado e não podem ser encerrados apenas no repositório.
 
-Critério de aceite:
+### Infraestrutura
 
-- métricas calculadas por tenant;
-- alunos recentes reais;
-- atividade recente real ou seção removida até existir trilha adequada;
-- frequência agregada real;
-- financeiro agregado real apenas para perfis autorizados;
-- nenhum dado de `lib/mock-data.ts` exibido após login.
+- provisionar VPS/plataforma de containers;
+- configurar domínio e DNS;
+- validar HTTPS real;
+- provisionar PostgreSQL final;
+- configurar storage S3/R2 privado;
+- configurar scanner de malware;
+- cadastrar secrets de produção.
 
-### 2. Entrada do responsável possui texto legado
-
-No `/dashboard`, o perfil GUARDIAN ainda recebe uma mensagem dizendo que notas, frequência, boletos e comunicados "serão conectados na fase do portal".
-
-O Portal do Responsável já está implementado. O fluxo deve redirecionar para `/portal/responsavel` ou exibir mensagem compatível com o estado atual.
-
-### 3. Homologação em infraestrutura real
-
-O CI valida o pacote, mas não substitui homologação no ambiente contratado.
-
-Ainda precisa validar na VPS/plataforma final:
-
-- domínio e DNS;
-- HTTPS real;
-- PostgreSQL final;
-- storage S3/R2 privado;
-- scanner de malware real;
-- upload e download real;
-- secrets de produção;
-- jobs agendados;
-- health monitor;
-- backup/PITR do provedor;
-- restore usando o ambiente real.
-
-### 4. Carga na infraestrutura escolhida
-
-O baseline de CI com 5.000 alunos e 600 requisições passou sem falhas, mas CPU, RAM, I/O, rede e PostgreSQL da VPS mudam o resultado.
-
-Antes do go-live, repetir o teste de carga na infraestrutura final e registrar novo baseline.
-
-## P1 — configuração operacional
+### Operação
 
 - configurar `PRODUCTION_APP_URL` e `CRON_SECRET` nos GitHub Secrets;
-- confirmar que `production-health.yml` está recebendo sinais do ambiente real;
+- confirmar o `production-health.yml` contra a URL real;
 - confirmar execução real de `scheduled-jobs.yml`;
-- ativar alertas de disponibilidade/erros;
-- configurar retenção e rotina de backup;
-- validar Resend, Meta WhatsApp e Asaas somente quando esses canais forem ativados pela escola;
-- cadastrar secrets independentes para MFA e criptografia de integrações.
+- ativar alertas;
+- habilitar backup/PITR;
+- executar restore drill contra o ambiente contratado.
 
-## P2 — acabamento
+### Integrações opcionais
 
-- atualizar a landing page, que ainda usa a frase "está sendo construído por fases";
-- remover `lib/mock-data.ts` depois da migração do dashboard para dados reais;
-- fazer uma rodada final de UX/mobile nos portais e backoffice com dados de homologação.
+Conforme a escola decidir ativar:
 
-## O que já está fechado
+- Resend;
+- Meta WhatsApp;
+- Asaas escolar;
+- Asaas da plataforma;
+- Sentry.
+
+### Teste final de capacidade
+
+O baseline de CI com 5.000 alunos e 600 requisições passou sem falhas, mas a capacidade real depende de CPU, RAM, I/O, rede e banco.
+
+Antes de liberar tráfego real:
+
+1. popular homologação com volume representativo;
+2. repetir o teste de carga na infraestrutura final;
+3. registrar p95 e erros;
+4. ajustar VPS/banco se necessário.
+
+## Fechado no código
 
 - 11 fases do produto;
-- responsável obrigatório na matrícula e responsável financeiro;
+- dashboard real sem mock;
+- responsável obrigatório e responsável financeiro;
 - financeiro MANUAL/EXTERNAL e Asaas opcional;
 - portais de aluno e responsável;
 - multi-tenant;
 - autenticação, RBAC e MFA;
+- sessões revogáveis;
 - idempotência;
-- proteção de upload e malware scan fail-closed em produção;
+- upload privado e malware scan fail-closed;
 - LGPD;
-- API v1 e webhooks;
-- performance gate;
-- regressão HTTP;
-- CodeQL e dependency audit;
-- migrations reprodutíveis;
+- API v1;
+- webhooks assinados;
+- rate limit;
+- importação/exportação;
+- migrations versionadas;
 - Docker/Compose/Caddy;
-- backup e restore drill;
-- teste de carga de referência com 600 requisições e 0 falhas.
+- health/readiness;
+- backup/restore;
+- CodeQL e dependency audit;
+- regressão HTTP;
+- teste de carga de referência.
 
-## Critério para declarar go-live fechado
+## Critério para declarar produção encerrada
 
-Só marcar produção como concluída quando:
+O código não possui mais bloqueador funcional conhecido para homologação.
 
-1. o dashboard não usar mais mock;
-2. o fluxo GUARDIAN estiver coerente com o portal existente;
-3. homologação real estiver aprovada;
-4. upload/scanner, jobs, monitoramento e backup estiverem validados no ambiente final;
-5. o teste de carga da infraestrutura escolhida estiver dentro dos limites definidos.
+O go-live é considerado encerrado quando infraestrutura, secrets, storage/scanner, jobs, monitoramento, backup/restore e teste de carga na VPS final estiverem validados.
