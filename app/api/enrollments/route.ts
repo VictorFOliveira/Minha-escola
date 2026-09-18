@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import {
+  idempotencyHash,
+  readIdempotency,
+  saveIdempotency,
+} from "@/lib/idempotency";
+import { emitSchoolEvent } from "@/lib/outgoing-webhooks";
 
 const readRoles = ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"];
 const writeRoles = ["ADMIN", "SECRETARY"];
@@ -48,6 +54,26 @@ export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   if (!writeRoles.includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
+
+  const operation = "enrollment.create";
+  const previous = await readIdempotency(
+    request,
+    session.schoolId,
+    operation,
+  ).catch(() => null);
+
+  if (previous?.responseBody && previous.responseStatus) {
+    return NextResponse.json(previous.responseBody, {
+      status: previous.responseStatus,
+      headers: { "Idempotent-Replay": "true" },
+    });
+  }
+
+  const keyHash = idempotencyHash(
+    request,
+    session.schoolId,
+    operation,
+  );
 
   const body = await request.json().catch(() => null);
   const studentId = typeof body?.studentId === "string" ? body.studentId : "";
@@ -133,5 +159,28 @@ export async function POST(request: Request) {
     include: { student: true, class: true },
   });
 
-  return NextResponse.json({ enrollment }, { status: 201 });
+  const responseBody = { enrollment };
+
+  await Promise.all([
+    saveIdempotency({
+      schoolId: session.schoolId,
+      operation,
+      keyHash,
+      responseStatus: 201,
+      responseBody,
+      resourceId: enrollment.id,
+    }).catch(() => null),
+    emitSchoolEvent({
+      schoolId: session.schoolId,
+      eventType: "enrollment.created",
+      payload: {
+        enrollmentId: enrollment.id,
+        studentId: enrollment.studentId,
+        classId: enrollment.classId,
+        status: enrollment.status,
+      },
+    }).catch(() => null),
+  ]);
+
+  return NextResponse.json(responseBody, { status: 201 });
 }
