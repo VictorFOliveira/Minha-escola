@@ -58,7 +58,7 @@ export async function PATCH(request: Request, context: Context) {
   const classGroup = await prisma.classGroup.update({
     where: { id },
     data,
-    include: { teacher: true, _count: { select: { enrollments: true } } },
+    include: { teacher: true, _count: { select: { enrollments: { where: { status: { in: ["ACTIVE", "PENDING"] } } } } } },
   });
 
   return NextResponse.json({ class: classGroup });
@@ -72,7 +72,7 @@ export async function DELETE(_: Request, context: Context) {
   const { id } = await context.params;
   const current = await prisma.classGroup.findFirst({
     where: { id, schoolId: session.schoolId },
-    include: { _count: { select: { enrollments: true } } },
+    include: { _count: { select: { enrollments: { where: { status: { in: ["ACTIVE", "PENDING"] } } } } } },
   });
 
   if (!current) return NextResponse.json({ error: "Turma não encontrada." }, { status: 404 });
