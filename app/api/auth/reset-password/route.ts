@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { revokeAllUserSessions } from "@/lib/session";
+import { recordUserSecurityEvent } from "@/lib/security-events";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -44,6 +46,15 @@ export async function POST(request: Request) {
       where: { userId: resetToken.userId },
     }),
   ]);
+
+  await revokeAllUserSessions(resetToken.userId);
+
+  await recordUserSecurityEvent({
+    schoolId: resetToken.user.schoolId,
+    userId: resetToken.userId,
+    eventType: "PASSWORD_RESET",
+    request,
+  }).catch(() => null);
 
   return NextResponse.json({ ok: true });
 }
