@@ -97,17 +97,32 @@ export async function PUT(request: Request, context: Context) {
     return NextResponse.json({ error: "Há matrícula duplicada na chamada." }, { status: 400 });
   }
 
-  const validEnrollments = await prisma.enrollment.findMany({
-    where: {
-      id: { in: enrollmentIds },
-      classId: lesson.classSubject.classId,
-      status: { in: ["ACTIVE", "PENDING"] },
-    },
-    select: { id: true },
-  });
+  const [validEnrollments, rosterCount] = await Promise.all([
+    prisma.enrollment.findMany({
+      where: {
+        id: { in: enrollmentIds },
+        classId: lesson.classSubject.classId,
+        status: { in: ["ACTIVE", "PENDING"] },
+      },
+      select: { id: true },
+    }),
+    prisma.enrollment.count({
+      where: {
+        classId: lesson.classSubject.classId,
+        status: { in: ["ACTIVE", "PENDING"] },
+      },
+    }),
+  ]);
 
   if (validEnrollments.length !== enrollmentIds.length) {
     return NextResponse.json({ error: "Há aluno inválido para esta turma." }, { status: 400 });
+  }
+
+  if (body?.completeLesson === true && enrollmentIds.length !== rosterCount) {
+    return NextResponse.json(
+      { error: "Para concluir a aula, a chamada precisa contemplar todos os alunos ativos/pendentes da turma." },
+      { status: 409 },
+    );
   }
 
   for (const item of body.attendance) {
@@ -126,12 +141,14 @@ export async function PUT(request: Request, context: Context) {
           },
         },
         update: {
+          recordedByUserId: session.id,
           status: item.status,
           note: item.note ? String(item.note).trim() : null,
         },
         create: {
           lessonId: lesson.id,
           enrollmentId: item.enrollmentId,
+          recordedByUserId: session.id,
           status: item.status,
           note: item.note ? String(item.note).trim() : null,
         },
