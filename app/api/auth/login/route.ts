@@ -36,6 +36,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (user.role === "TEACHER" && !user.teacherId) {
+    return NextResponse.json(
+      { error: "A conta do professor ainda não está vinculada ao cadastro docente." },
+      { status: 403 },
+    );
+  }
+
   const validPassword = await bcrypt.compare(password, user.password);
 
   if (!validPassword) {
@@ -56,6 +63,7 @@ export async function POST(request: Request) {
     role: user.role,
     studentId: user.studentId,
     guardianId: user.guardianId,
+    teacherId: user.teacherId,
   });
 
   return NextResponse.json({
