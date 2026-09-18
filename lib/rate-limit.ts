@@ -30,7 +30,28 @@ export async function checkRateLimit(input: {
   const keyHash = hashKey(input.action, input.key);
 
   return prisma.$transaction(async (tx) => {
-    const current = await tx.securityThrottle.findUnique({
+    // Força um UPDATE mesmo quando a linha já existe. No PostgreSQL o lock
+    // permanece até o fim da transação, serializando rajadas concorrentes
+    // para a mesma chave sem perder incrementos.
+    await tx.securityThrottle.upsert({
+      where: {
+        action_keyHash: {
+          action: input.action,
+          keyHash,
+        },
+      },
+      update: {
+        updatedAt: now,
+      },
+      create: {
+        action: input.action,
+        keyHash,
+        windowStart: now,
+        count: 0,
+      },
+    });
+
+    const current = await tx.securityThrottle.findUniqueOrThrow({
       where: {
         action_keyHash: {
           action: input.action,
@@ -39,7 +60,7 @@ export async function checkRateLimit(input: {
       },
     });
 
-    if (current?.blockedUntil && current.blockedUntil > now) {
+    if (current.blockedUntil && current.blockedUntil > now) {
       return {
         allowed: false,
         retryAfterSeconds: Math.max(
@@ -50,27 +71,15 @@ export async function checkRateLimit(input: {
     }
 
     const windowExpired =
-      !current ||
       now.getTime() - current.windowStart.getTime() >= input.windowMs;
 
     if (windowExpired) {
-      await tx.securityThrottle.upsert({
-        where: {
-          action_keyHash: {
-            action: input.action,
-            keyHash,
-          },
-        },
-        update: {
+      await tx.securityThrottle.update({
+        where: { id: current.id },
+        data: {
           windowStart: now,
           count: 1,
           blockedUntil: null,
-        },
-        create: {
-          action: input.action,
-          keyHash,
-          windowStart: now,
-          count: 1,
         },
       });
 
