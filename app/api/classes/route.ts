@@ -26,7 +26,7 @@ export async function GET() {
     orderBy: [{ schoolYear: "desc" }, { gradeLevel: "asc" }, { name: "asc" }],
     include: {
       teacher: true,
-      _count: { select: { enrollments: true } },
+      _count: { select: { enrollments: { where: { status: { in: ["ACTIVE", "PENDING"] } } } } },
     },
   });
 
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       capacity,
       teacherId,
     },
-    include: { teacher: true, _count: { select: { enrollments: true } } },
+    include: { teacher: true, _count: { select: { enrollments: { where: { status: { in: ["ACTIVE", "PENDING"] } } } } } },
   });
 
   return NextResponse.json({ class: classGroup }, { status: 201 });
