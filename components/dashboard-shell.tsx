@@ -8,15 +8,16 @@ const navItems: Array<{
   icon: string;
   roles: AppRole[];
 }> = [
-  { href: "/dashboard", label: "Visão geral", icon: "◫", roles: ["ADMIN", "SECRETARY", "TEACHER", "FINANCE"] },
+  { href: "/dashboard", label: "Visão geral", icon: "◫", roles: ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER", "FINANCE"] },
   { href: "/dashboard/alunos", label: "Alunos", icon: "◎", roles: ["ADMIN", "SECRETARY"] },
   { href: "/dashboard/matriculas", label: "Matrículas", icon: "▣", roles: ["ADMIN", "SECRETARY"] },
   { href: "/dashboard/responsaveis", label: "Responsáveis", icon: "♧", roles: ["ADMIN", "SECRETARY"] },
   { href: "/dashboard/professores", label: "Professores", icon: "♙", roles: ["ADMIN", "SECRETARY"] },
   { href: "/dashboard/funcionarios", label: "Funcionários", icon: "♢", roles: ["ADMIN"] },
-  { href: "/dashboard/turmas", label: "Turmas", icon: "▦", roles: ["ADMIN", "SECRETARY", "TEACHER"] },
-  { href: "/dashboard/academico", label: "Acadêmico", icon: "▤", roles: ["ADMIN", "SECRETARY"] },
-  { href: "/dashboard/frequencia", label: "Frequência", icon: "✓", roles: ["ADMIN", "SECRETARY", "TEACHER"] },
+  { href: "/dashboard/turmas", label: "Turmas", icon: "▦", roles: ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"] },
+  { href: "/dashboard/academico", label: "Acadêmico", icon: "▤", roles: ["ADMIN", "COORDINATOR", "SECRETARY"] },
+  { href: "/dashboard/avaliacoes", label: "Avaliações", icon: "✎", roles: ["ADMIN", "COORDINATOR", "TEACHER"] },
+  { href: "/dashboard/frequencia", label: "Frequência", icon: "✓", roles: ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"] },
   { href: "/dashboard/financeiro", label: "Financeiro", icon: "$", roles: ["ADMIN", "FINANCE"] },
   { href: "/dashboard/usuarios", label: "Usuários", icon: "⚙", roles: ["ADMIN"] },
   { href: "/dashboard/escola", label: "Escola", icon: "⌂", roles: ["ADMIN"] },
