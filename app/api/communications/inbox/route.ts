@@ -18,6 +18,12 @@ export async function GET() {
   const recipients = await prisma.communicationRecipient.findMany({
     where: {
       ...recipientWhere,
+      deliveries: {
+        some: {
+          channel: "PORTAL",
+          status: "SENT",
+        },
+      },
       communication: {
         schoolId: session.schoolId,
         status: "PUBLISHED",
