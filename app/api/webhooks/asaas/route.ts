@@ -165,6 +165,8 @@ export async function POST(request: Request) {
         where: { id: charge.id },
         data: {
           status: "REFUNDED",
+          paidAmount: 0,
+          paidAt: null,
           externalStatus: payload?.payment?.status || eventType,
         },
       });
