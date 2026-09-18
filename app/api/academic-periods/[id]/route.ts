@@ -12,6 +12,15 @@ export async function PATCH(request: Request, context: Context) {
   const { id } = await context.params;
   const current = await prisma.academicPeriod.findFirst({
     where: { id, schoolId: session.schoolId },
+    include: {
+      _count: {
+        select: {
+          assessments: true,
+          lessons: true,
+          periodGrades: true,
+        },
+      },
+    },
   });
 
   if (!current) return NextResponse.json({ error: "Período letivo não encontrado." }, { status: 404 });
@@ -49,6 +58,17 @@ export async function PATCH(request: Request, context: Context) {
     if (!(weight > 0)) {
       return NextResponse.json({ error: "Peso do período inválido." }, { status: 400 });
     }
+
+    if (
+      current._count.periodGrades > 0 &&
+      Number(current.weight) !== weight
+    ) {
+      return NextResponse.json(
+        { error: "O peso não pode ser alterado depois que o período possui médias fechadas." },
+        { status: 409 },
+      );
+    }
+
     data.weight = weight;
   }
 
@@ -82,6 +102,17 @@ export async function DELETE(_: Request, context: Context) {
   });
 
   if (!current) return NextResponse.json({ error: "Período letivo não encontrado." }, { status: 404 });
+
+  if (
+    current._count.assessments > 0 ||
+    current._count.lessons > 0 ||
+    current._count.periodGrades > 0
+  ) {
+    return NextResponse.json(
+      { error: "Este período já possui histórico acadêmico e não pode ser excluído." },
+      { status: 409 },
+    );
+  }
 
   await prisma.academicPeriod.delete({ where: { id } });
   return NextResponse.json({ ok: true });
