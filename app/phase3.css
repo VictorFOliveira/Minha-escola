@@ -1,0 +1,268 @@
+.records-manager,
+.school-settings {
+  display: grid;
+  gap: 22px;
+}
+
+.record-form-panel,
+.relation-panel {
+  border-color: #dce6f5;
+  box-shadow: 0 14px 40px rgba(37, 99, 235, .05);
+}
+
+.record-form,
+.school-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.record-form label,
+.school-form label,
+.relation-form label {
+  display: grid;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #41506a;
+}
+
+.record-form input,
+.school-form input,
+.relation-form input,
+.relation-form select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #d8e0ea;
+  border-radius: 11px;
+  padding: 0 12px;
+  background: white;
+  color: var(--text);
+  outline: none;
+}
+
+.record-form input:focus,
+.school-form input:focus,
+.relation-form input:focus,
+.relation-form select:focus {
+  border-color: #7da0f9;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, .08);
+}
+
+.record-field--wide,
+.school-field--wide {
+  grid-column: span 2;
+}
+
+.record-form-actions,
+.school-form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.search-box input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.record-count {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.records-list {
+  display: grid;
+}
+
+.record-row {
+  display: grid;
+  grid-template-columns: 42px minmax(190px, 1.5fr) minmax(180px, 1fr) auto minmax(220px, auto);
+  align-items: center;
+  gap: 14px;
+  padding: 16px 8px;
+  border-top: 1px solid #edf0f4;
+}
+
+.record-row:first-child {
+  border-top: 0;
+}
+
+.record-main,
+.record-contact {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.record-main strong {
+  font-size: 13px;
+}
+
+.record-main span,
+.record-contact span {
+  color: var(--muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-main small {
+  color: #4265a7;
+  font-size: 10px;
+}
+
+.record-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.inline-action--danger {
+  color: #c7473d;
+}
+
+.empty-records {
+  min-height: 250px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  padding: 30px;
+}
+
+.empty-records > span {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #edf3ff;
+  color: var(--primary);
+  font-size: 24px;
+}
+
+.empty-records h3 {
+  margin: 13px 0 5px;
+  font-size: 16px;
+}
+
+.empty-records p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.relation-form {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr auto auto auto;
+  align-items: end;
+  gap: 14px;
+}
+
+.check-field {
+  display: flex !important;
+  align-items: center;
+  min-height: 44px;
+  gap: 8px !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+}
+
+.check-field input {
+  width: 16px;
+  min-height: auto;
+  height: 16px;
+}
+
+.school-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sidebar-nav {
+  scrollbar-width: thin;
+}
+
+@media (max-width: 1250px) {
+  .record-row {
+    grid-template-columns: 42px minmax(170px, 1.3fr) minmax(160px, 1fr) auto;
+  }
+
+  .record-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-start;
+  }
+
+  .relation-form {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .relation-form .button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .record-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .record-row {
+    grid-template-columns: 38px 1fr auto;
+  }
+
+  .record-contact {
+    display: none;
+  }
+
+  .record-actions {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .record-form,
+  .school-form,
+  .relation-form {
+    grid-template-columns: 1fr;
+  }
+
+  .record-field--wide,
+  .school-field--wide,
+  .relation-form .button {
+    grid-column: auto;
+  }
+
+  .record-form-actions,
+  .school-form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .record-form-actions .button,
+  .school-form-actions .button {
+    width: 100%;
+  }
+
+  .record-row {
+    grid-template-columns: 36px 1fr;
+  }
+
+  .record-row > .status-chip {
+    grid-column: 2;
+    width: fit-content;
+  }
+
+  .record-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
