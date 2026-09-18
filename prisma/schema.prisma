@@ -370,6 +370,7 @@ model ClassSubject {
   assessments Assessment[]
   lessons     Lesson[]
   periodGrades PeriodGrade[]
+  subjectResults SubjectFinalResult[]
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -401,9 +402,11 @@ model AcademicPeriod {
   order      Int
   startDate  DateTime
   endDate    DateTime
+  weight     Decimal              @default(1) @db.Decimal(6, 2)
   status     AcademicPeriodStatus @default(PLANNED)
   assessments Assessment[]
   lessons     Lesson[]
+  periodGrades PeriodGrade[]
   createdAt  DateTime             @default(now())
   updatedAt  DateTime             @updatedAt
 
