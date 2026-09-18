@@ -16,10 +16,34 @@ type UserItem = {
   active: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  enrollment?: {
+    id: string;
+    status: string;
+    student: { id: string; name: string; registration: string };
+    class: { id: string; name: string; schoolYear: number };
+  } | null;
+  guardian?: { id: string; name: string } | null;
+  teacher?: { id: string; name: string } | null;
+};
+
+type EnrollmentOption = {
+  id: string;
+  status: string;
+  student: { id: string; name: string; registration: string };
+  class: { id: string; name: string; schoolYear: number };
+};
+
+type SimpleOption = {
+  id: string;
+  name: string;
 };
 
 export function UserManagement() {
   const [users, setUsers] = useState<UserItem[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentOption[]>([]);
+  const [guardians, setGuardians] = useState<SimpleOption[]>([]);
+  const [teachers, setTeachers] = useState<SimpleOption[]>([]);
+  const [selectedRole, setSelectedRole] = useState<AppRole>("TEACHER");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -30,15 +54,52 @@ export function UserManagement() {
     setError("");
 
     try {
-      const response = await fetch("/api/users", { cache: "no-store" });
-      const data = await response.json();
+      const [usersResponse, enrollmentsResponse, guardiansResponse, teachersResponse] =
+        await Promise.all([
+          fetch("/api/users", { cache: "no-store" }),
+          fetch("/api/enrollments", { cache: "no-store" }),
+          fetch("/api/guardians", { cache: "no-store" }),
+          fetch("/api/teachers", { cache: "no-store" }),
+        ]);
 
-      if (!response.ok) {
-        setError(data.error || "Não foi possível carregar os usuários.");
+      const [usersData, enrollmentsData, guardiansData, teachersData] =
+        await Promise.all([
+          usersResponse.json(),
+          enrollmentsResponse.json(),
+          guardiansResponse.json(),
+          teachersResponse.json(),
+        ]);
+
+      if (!usersResponse.ok) {
+        setError(usersData.error || "Não foi possível carregar os usuários.");
         return;
       }
 
-      setUsers(data.users);
+      setUsers(usersData.users || []);
+
+      if (enrollmentsResponse.ok) {
+        setEnrollments(
+          (enrollmentsData.enrollments || []).filter((item: EnrollmentOption) =>
+            ["ACTIVE", "PENDING"].includes(item.status),
+          ),
+        );
+      }
+
+      if (guardiansResponse.ok) {
+        setGuardians(
+          (guardiansData.guardians || [])
+            .filter((item: any) => item.status === "ACTIVE")
+            .map((item: any) => ({ id: item.id, name: item.name })),
+        );
+      }
+
+      if (teachersResponse.ok) {
+        setTeachers(
+          (teachersData.teachers || [])
+            .filter((item: any) => item.status === "ACTIVE")
+            .map((item: any) => ({ id: item.id, name: item.name })),
+        );
+      }
     } catch {
       setError("Não foi possível conectar ao servidor.");
     } finally {
@@ -61,6 +122,9 @@ export function UserManagement() {
       email: String(form.get("email") || ""),
       password: String(form.get("password") || ""),
       role: String(form.get("role") || ""),
+      enrollmentId: String(form.get("enrollmentId") || ""),
+      guardianId: String(form.get("guardianId") || ""),
+      teacherId: String(form.get("teacherId") || ""),
     };
 
     try {
@@ -77,6 +141,7 @@ export function UserManagement() {
       }
 
       event.currentTarget.reset();
+      setSelectedRole("TEACHER");
       setShowForm(false);
       await loadUsers();
     } catch {
@@ -86,7 +151,10 @@ export function UserManagement() {
     }
   }
 
-  async function updateUser(id: string, changes: Partial<Pick<UserItem, "active" | "role">>) {
+  async function updateUser(
+    id: string,
+    changes: Partial<Pick<UserItem, "active" | "role">>,
+  ) {
     setError("");
 
     try {
@@ -99,6 +167,7 @@ export function UserManagement() {
 
       if (!response.ok) {
         setError(data.error || "Não foi possível alterar o usuário.");
+        await loadUsers();
         return;
       }
 
@@ -110,13 +179,38 @@ export function UserManagement() {
     }
   }
 
+  function linkedRecord(user: UserItem) {
+    if (user.role === "STUDENT" && user.enrollment) {
+      return (
+        user.enrollment.student.name +
+        " • " +
+        user.enrollment.class.name +
+        " • " +
+        user.enrollment.class.schoolYear
+      );
+    }
+
+    if (user.role === "GUARDIAN" && user.guardian) {
+      return user.guardian.name;
+    }
+
+    if (user.role === "TEACHER" && user.teacher) {
+      return user.teacher.name;
+    }
+
+    return "Acesso institucional";
+  }
+
   return (
     <div className="user-management">
       <div className="page-heading">
         <div>
           <span className="eyebrow">ADMINISTRAÇÃO</span>
           <h2>Usuários e acessos</h2>
-          <p>Controle quem entra no sistema e quais módulos cada pessoa pode acessar.</p>
+          <p>
+            Contas de aluno, responsável e professor são vinculadas ao registro
+            real correspondente.
+          </p>
         </div>
         <button
           className="button button--primary"
@@ -138,14 +232,19 @@ export function UserManagement() {
             </div>
           </div>
 
-          <form className="user-form" onSubmit={createUser}>
+          <form className="user-form user-form--linked" onSubmit={createUser}>
             <label>
               Nome
               <input name="name" required placeholder="Nome completo" />
             </label>
             <label>
               E-mail
-              <input name="email" type="email" required placeholder="usuario@escola.com.br" />
+              <input
+                name="email"
+                type="email"
+                required
+                placeholder="usuario@escola.com.br"
+              />
             </label>
             <label>
               Senha inicial
@@ -153,12 +252,69 @@ export function UserManagement() {
             </label>
             <label>
               Perfil
-              <select name="role" defaultValue="TEACHER" required>
+              <select
+                name="role"
+                value={selectedRole}
+                onChange={(event) => setSelectedRole(event.target.value as AppRole)}
+                required
+              >
                 {APP_ROLES.map((role) => (
-                  <option key={role} value={role}>{ROLE_LABELS[role]}</option>
+                  <option key={role} value={role}>
+                    {ROLE_LABELS[role]}
+                  </option>
                 ))}
               </select>
             </label>
+
+            {selectedRole === "STUDENT" ? (
+              <label className="user-link-field">
+                Matrícula vinculada
+                <select name="enrollmentId" required defaultValue="">
+                  <option value="" disabled>
+                    Selecione a matrícula...
+                  </option>
+                  {enrollments.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.student.name} • {item.student.registration} •{" "}
+                      {item.class.name} • {item.class.schoolYear}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            {selectedRole === "GUARDIAN" ? (
+              <label className="user-link-field">
+                Responsável vinculado
+                <select name="guardianId" required defaultValue="">
+                  <option value="" disabled>
+                    Selecione o responsável...
+                  </option>
+                  {guardians.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            {selectedRole === "TEACHER" ? (
+              <label className="user-link-field">
+                Professor vinculado
+                <select name="teacherId" required defaultValue="">
+                  <option value="" disabled>
+                    Selecione o professor...
+                  </option>
+                  {teachers.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
             <button className="button button--primary" disabled={saving}>
               {saving ? "Cadastrando..." : "Criar usuário"}
             </button>
@@ -192,6 +348,7 @@ export function UserManagement() {
                 <tr>
                   <th>Usuário</th>
                   <th>Perfil</th>
+                  <th>Vínculo</th>
                   <th>Status</th>
                   <th>Último acesso</th>
                   <th>Ação</th>
@@ -203,7 +360,12 @@ export function UserManagement() {
                     <td>
                       <div className="user-name-cell">
                         <span className="avatar avatar--small">
-                          {user.name.split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase()}
+                          {user.name
+                            .split(" ")
+                            .slice(0, 2)
+                            .map((part) => part[0])
+                            .join("")
+                            .toUpperCase()}
                         </span>
                         <span>
                           <strong>{user.name}</strong>
@@ -216,16 +378,29 @@ export function UserManagement() {
                         className="table-select"
                         value={user.role}
                         onChange={(event) =>
-                          void updateUser(user.id, { role: event.target.value as AppRole })
+                          void updateUser(user.id, {
+                            role: event.target.value as AppRole,
+                          })
                         }
                       >
                         {APP_ROLES.map((role) => (
-                          <option key={role} value={role}>{ROLE_LABELS[role]}</option>
+                          <option key={role} value={role}>
+                            {ROLE_LABELS[role]}
+                          </option>
                         ))}
                       </select>
                     </td>
                     <td>
-                      <span className={user.active ? "status-chip status-chip--success" : "status-chip status-chip--warning"}>
+                      <span className="user-link-summary">{linkedRecord(user)}</span>
+                    </td>
+                    <td>
+                      <span
+                        className={
+                          user.active
+                            ? "status-chip status-chip--success"
+                            : "status-chip status-chip--warning"
+                        }
+                      >
                         {user.active ? "Ativo" : "Desativado"}
                       </span>
                     </td>
@@ -241,7 +416,9 @@ export function UserManagement() {
                       <button
                         className="inline-action"
                         type="button"
-                        onClick={() => void updateUser(user.id, { active: !user.active })}
+                        onClick={() =>
+                          void updateUser(user.id, { active: !user.active })
+                        }
                       >
                         {user.active ? "Desativar" : "Ativar"}
                       </button>
