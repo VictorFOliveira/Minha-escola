@@ -265,11 +265,11 @@ test("class communication resolves only recipients from the tenant class", async
     });
 
     assert.deepEqual(
-      recipients.map((item) => item.guardianId),
+      recipients.map((item: { guardianId?: string | null }) => item.guardianId),
       [fixture.guardianA.id],
     );
     assert.equal(
-      recipients.some((item) => item.guardianId === fixture.guardianB.id),
+      recipients.some((item: { guardianId?: string | null }) => item.guardianId === fixture.guardianB.id),
       false,
     );
 
