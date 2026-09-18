@@ -7,6 +7,7 @@ import {
   saveIdempotency,
 } from "@/lib/idempotency";
 import { emitSchoolEvent } from "@/lib/outgoing-webhooks";
+import { paginationFromRequest, paginationMeta } from "@/lib/pagination";
 
 const readRoles = ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER"];
 const writeRoles = ["ADMIN", "SECRETARY"];
@@ -19,35 +20,59 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const schoolYearParam = url.searchParams.get("schoolYear");
   const schoolYear = schoolYearParam ? Number(schoolYearParam) : null;
-
-  const enrollments = await prisma.enrollment.findMany({
-    where: {
-      class: {
-        schoolId: session.schoolId,
-        ...(Number.isInteger(schoolYear) ? { schoolYear: schoolYear as number } : {}),
-        ...(session.role === "TEACHER" && session.teacherId
-          ? {
-              classSubjects: {
-                some: { teacherId: session.teacherId },
-              },
-            }
-          : {}),
-      },
-    },
-    orderBy: [{ class: { schoolYear: "desc" } }, { startedAt: "desc" }],
-    include: {
-      student: true,
-      class: { include: { teacher: true } },
-      previousEnrollment: {
-        include: { class: true },
-      },
-      nextEnrollment: {
-        include: { class: true },
-      },
-    },
+  const pagination = paginationFromRequest(request, {
+    defaultPageSize: 50,
+    maxPageSize: 100,
+    maxAll: 5000,
   });
 
-  return NextResponse.json({ enrollments });
+  const where = {
+    class: {
+      schoolId: session.schoolId,
+      ...(Number.isInteger(schoolYear) ? { schoolYear: schoolYear as number } : {}),
+      ...(session.role === "TEACHER" && session.teacherId
+        ? {
+            classSubjects: {
+              some: { teacherId: session.teacherId },
+            },
+          }
+        : {}),
+    },
+    ...(pagination.search
+      ? {
+          OR: [
+            { student: { name: { contains: pagination.search, mode: "insensitive" as const } } },
+            { student: { registration: { contains: pagination.search, mode: "insensitive" as const } } },
+            { class: { name: { contains: pagination.search, mode: "insensitive" as const } } },
+          ],
+        }
+      : {}),
+  };
+
+  const [enrollments, total] = await Promise.all([
+    prisma.enrollment.findMany({
+      where,
+      orderBy: [{ class: { schoolYear: "desc" } }, { startedAt: "desc" }],
+      skip: pagination.skip,
+      take: pagination.take,
+      include: {
+        student: true,
+        class: { include: { teacher: true } },
+        previousEnrollment: {
+          include: { class: true },
+        },
+        nextEnrollment: {
+          include: { class: true },
+        },
+      },
+    }),
+    prisma.enrollment.count({ where }),
+  ]);
+
+  return NextResponse.json({
+    enrollments,
+    meta: paginationMeta(total, pagination.page, pagination.pageSize),
+  });
 }
 
 export async function POST(request: Request) {
