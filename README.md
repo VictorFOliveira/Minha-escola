@@ -91,7 +91,8 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - /dashboard/escola
 - /dashboard/academico
 - /dashboard/avaliacoes
-- /dashboard/frequencia
+- /dashboard/diario
+- /dashboard/frequencia — redireciona para o novo diário
 - /portal/aluno
 - /portal/responsavel
 - /dashboard/financeiro
@@ -149,10 +150,39 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - portal do responsável isolado do backoffice;
 - professor limitado às turmas/disciplinas atribuídas.
 
+### Fase 6 — Diário do professor e frequência por disciplina ✅
+- aula vinculada à disciplina real da turma;
+- professor limitado às disciplinas que realmente leciona;
+- data, horário e período letivo por aula;
+- conteúdo previsto;
+- conteúdo efetivamente ministrado;
+- tarefa/atividade;
+- observações do diário;
+- status Planejada, Em andamento, Concluída ou Cancelada;
+- chamada individual por matrícula;
+- estados Presente, Falta, Atraso e Justificada;
+- observação individual na chamada;
+- ação para marcar a turma inteira como presente ou ausente;
+- salvamento parcial da chamada;
+- fechamento da aula junto com a frequência;
+- frequência calculada a partir das aulas concluídas;
+- frequência por disciplina no Portal do Aluno;
+- registros cancelados não entram na frequência;
+- rota antiga de frequência redirecionada ao novo diário.
+
+## Segurança acadêmica
+
+- a conta STUDENT permanece vinculada à matrícula atual;
+- rematrícula transfere automaticamente o vínculo da conta para a nova matrícula;
+- professor só abre diário, avaliações e chamadas das disciplinas atribuídas ao seu cadastro;
+- coordenação e administrador possuem visão acadêmica transversal;
+- responsável só alcança alunos ligados ao seu cadastro;
+- aluno nunca usa o dashboard administrativo;
+- autorização é feita no servidor e não apenas por ocultação de menu.
+
 ## Próximas fases
 
-6. Frequência por disciplina e diário completo do professor.
-7. Notas, avaliações e boletins.
+7. Boletim, fechamento de médias, recuperação e resultado final.
 8. Financeiro completo e pagamentos.
 9. Portal do responsável e comunicação.
 10. Secretaria e documentos oficiais.
