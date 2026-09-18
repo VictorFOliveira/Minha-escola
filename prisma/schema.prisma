@@ -40,6 +40,12 @@ enum PersonStatus {
   INACTIVE
 }
 
+enum AcademicPeriodStatus {
+  PLANNED
+  ACTIVE
+  CLOSED
+}
+
 model School {
   id        String       @id @default(cuid())
   name      String
@@ -56,6 +62,9 @@ model School {
   teachers  Teacher[]
   employees Employee[]
   classes   ClassGroup[]
+  subjects  Subject[]
+  curricula Curriculum[]
+  academicPeriods AcademicPeriod[]
   charges   Charge[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -158,6 +167,7 @@ model Teacher {
   specialty String?
   status    PersonStatus @default(ACTIVE)
   classes   ClassGroup[]
+  classSubjects ClassSubject[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -185,24 +195,111 @@ model Employee {
 }
 
 model ClassGroup {
+  id           String       @id @default(cuid())
+  schoolId     String
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacherId    String?
+  teacher      Teacher?     @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  curriculumId String?
+  curriculum   Curriculum?  @relation(fields: [curriculumId], references: [id], onDelete: SetNull)
+  name         String
+  gradeLevel   String
+  shift        String
+  room         String?
+  capacity     Int?
+  schoolYear   Int
+  classSubjects ClassSubject[]
+  enrollments  Enrollment[]
+  attendances  Attendance[]
+  grades       Grade[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([schoolId, schoolYear])
+  @@index([curriculumId])
+}
+
+model Subject {
   id          String       @id @default(cuid())
   schoolId    String
   school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  teacherId   String?
-  teacher     Teacher?     @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   name        String
-  gradeLevel  String
-  shift       String
-  room        String?
-  capacity    Int?
-  schoolYear  Int
-  enrollments Enrollment[]
-  attendances Attendance[]
-  grades      Grade[]
+  code        String?
+  active      Boolean      @default(true)
+  curriculumSubjects CurriculumSubject[]
+  classSubjects ClassSubject[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  @@index([schoolId, schoolYear])
+  @@unique([schoolId, name])
+  @@unique([schoolId, code])
+  @@index([schoolId, active])
+}
+
+model Curriculum {
+  id          String       @id @default(cuid())
+  schoolId    String
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name        String
+  gradeLevel  String
+  schoolYear  Int
+  active      Boolean      @default(true)
+  subjects    CurriculumSubject[]
+  classes     ClassGroup[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([schoolId, gradeLevel, schoolYear])
+  @@index([schoolId, schoolYear, active])
+}
+
+model CurriculumSubject {
+  id             String     @id @default(cuid())
+  curriculumId   String
+  curriculum     Curriculum @relation(fields: [curriculumId], references: [id], onDelete: Cascade)
+  subjectId      String
+  subject        Subject    @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  weeklyClasses  Int?
+  workloadHours  Int?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@unique([curriculumId, subjectId])
+  @@index([subjectId])
+}
+
+model ClassSubject {
+  id            String     @id @default(cuid())
+  classId       String
+  class         ClassGroup @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectId     String
+  subject       Subject    @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teacherId     String?
+  teacher       Teacher?   @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  weeklyClasses Int?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([classId, subjectId])
+  @@index([subjectId])
+  @@index([teacherId])
+}
+
+model AcademicPeriod {
+  id         String               @id @default(cuid())
+  schoolId   String
+  school     School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolYear Int
+  name       String
+  order      Int
+  startDate  DateTime
+  endDate    DateTime
+  status     AcademicPeriodStatus @default(PLANNED)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  @@unique([schoolId, schoolYear, order])
+  @@index([schoolId, schoolYear, status])
 }
 
 model Enrollment {
