@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/session";
 import { calculatePeriodAverage } from "@/lib/grade-calculations";
 import { CommunicationInbox } from "@/components/communication-inbox";
 import { PortalDocuments } from "@/components/portal-documents";
+import { PrivacyPortal } from "@/components/privacy-portal";
 
 const weekdays: Record<number, string> = {
   1: "Segunda",
@@ -318,6 +319,7 @@ export default async function StudentPortalPage() {
 
       <CommunicationInbox title="Comunicados para você" />
       <PortalDocuments />
+      <PrivacyPortal />
 
       <section className="portal-metrics">
         <article>
