@@ -90,9 +90,9 @@ export async function POST(request: Request) {
     prisma.enrollmentAcademicResult.updateMany({
       where: {
         enrollmentId: {
-          in: calculated
-            .filter((item): item is NonNullable<typeof item> => Boolean(item))
-            .map((item) => item.enrollment.id),
+          in: calculated.flatMap((item) =>
+            item ? [item.enrollment.id] : [],
+          ),
         },
       },
       data: {
