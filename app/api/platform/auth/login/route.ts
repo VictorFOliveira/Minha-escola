@@ -8,6 +8,8 @@ import {
   clearRateLimit,
   requestFingerprint,
 } from "@/lib/rate-limit";
+import { createMfaChallenge } from "@/lib/mfa";
+import { recordPlatformSecurityEvent } from "@/lib/security-events";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -70,35 +72,40 @@ export async function POST(request: Request) {
 
   const valid = await bcrypt.compare(password, admin.password);
   if (!valid) {
+    await recordPlatformSecurityEvent({
+      platformAdminId: admin.id,
+      eventType: "PLATFORM_LOGIN_FAILED",
+      severity: "WARN",
+      request,
+    }).catch(() => null);
+
     return NextResponse.json(
       { error: "E-mail ou senha inválidos." },
       { status: 401 },
     );
   }
 
-  await Promise.all([
-    prisma.platformAdmin.update({
-      where: { id: admin.id },
-      data: { lastLoginAt: new Date() },
-    }),
-    clearRateLimit("PLATFORM_LOGIN_ACCOUNT", email),
-  ]);
+  await clearRateLimit("PLATFORM_LOGIN_ACCOUNT", email);
 
-  await createPlatformSession({
-    id: admin.id,
-    email: admin.email,
-    name: admin.name,
+  const mfaMode = admin.mfaEnabled ? "VERIFY" : "SETUP";
+  const challengeToken = await createMfaChallenge({
+    actor: "PLATFORM_ADMIN",
+    actorId: admin.id,
+    mode: mfaMode,
   });
 
-  await auditPlatformAction({
+  await recordPlatformSecurityEvent({
     platformAdminId: admin.id,
-    action: "PLATFORM_LOGIN",
-    entityType: "PlatformAdmin",
-    entityId: admin.id,
+    eventType:
+      mfaMode === "SETUP"
+        ? "PLATFORM_MFA_ENROLLMENT_REQUIRED"
+        : "PLATFORM_MFA_CHALLENGE_REQUIRED",
+    request,
   }).catch(() => null);
 
   return NextResponse.json({
-    ok: true,
-    homePath: "/superadmin",
+    mfaRequired: true,
+    mfaMode,
+    challengeToken,
   });
 }
