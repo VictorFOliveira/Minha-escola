@@ -142,7 +142,9 @@ export async function POST(request: Request) {
       })
     : [];
 
-  const fileAssetMap = new Map(fileAssets.map((item) => [item.id, item]));
+  const fileAssetMap = new Map(
+    fileAssets.map((item: (typeof fileAssets)[number]) => [item.id, item]),
+  );
 
   const attachments = rawAttachments.flatMap((item: any) => {
     if (!item || typeof item.name !== "string" || !item.name.trim()) {
