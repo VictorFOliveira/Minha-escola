@@ -43,35 +43,50 @@ model School {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  schoolId  String
-  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  name      String
-  email     String   @unique
-  password  String
-  role      UserRole
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  schoolId    String
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name        String
+  email       String   @unique
+  password    String
+  role        UserRole
+  active      Boolean  @default(true)
+  lastLoginAt DateTime?
+  resetTokens PasswordResetToken[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([schoolId])
+  @@index([schoolId, role, active])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
 }
 
 model Student {
-  id          String       @id @default(cuid())
-  schoolId    String
-  school      School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  registration String
-  name        String
-  birthDate   DateTime?
-  guardianName String?
+  id            String       @id @default(cuid())
+  schoolId      String
+  school        School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  registration  String
+  name          String
+  birthDate     DateTime?
+  guardianName  String?
   guardianPhone String?
   guardianEmail String?
-  enrollments Enrollment[]
-  attendances Attendance[]
-  grades      Grade[]
-  charges     Charge[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  enrollments   Enrollment[]
+  attendances   Attendance[]
+  grades        Grade[]
+  charges       Charge[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@unique([schoolId, registration])
   @@index([schoolId, name])
