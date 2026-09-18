@@ -248,6 +248,59 @@ export function CommunicationManager({
             return;
           }
 
+          if (!completeData.available) {
+            setMessage("Anexo recebido. Verificando segurança do arquivo...");
+
+            let available = false;
+            let lastStatus = completeData.asset?.scanStatus || "PENDING";
+
+            for (let attempt = 0; attempt < 30; attempt += 1) {
+              await new Promise((resolve) => window.setTimeout(resolve, 1000));
+
+              const statusResponse = await fetch(
+                "/api/files/" + prepareData.asset.id + "/status",
+                { cache: "no-store" },
+              );
+              const statusData = await statusResponse.json();
+
+              if (!statusResponse.ok) {
+                setError(
+                  statusData.error || "Não foi possível acompanhar a análise do anexo.",
+                );
+                return;
+              }
+
+              lastStatus = statusData.asset?.scanStatus || lastStatus;
+
+              if (statusData.available) {
+                available = true;
+                break;
+              }
+
+              if (
+                statusData.asset?.scanStatus === "INFECTED" ||
+                statusData.asset?.status === "DELETED"
+              ) {
+                setError("O anexo foi bloqueado pelo scanner de segurança.");
+                return;
+              }
+
+              if (statusData.asset?.scanStatus === "FAILED") {
+                setError("O scanner não conseguiu validar o anexo.");
+                return;
+              }
+            }
+
+            if (!available) {
+              setError(
+                "A análise do anexo ainda está pendente. Tente publicar novamente depois.",
+              );
+              return;
+            }
+
+            setMessage("");
+          }
+
           attachments.push({
             name: attachmentName || attachmentFile.name,
             fileAssetId: prepareData.asset.id,
