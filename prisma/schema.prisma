@@ -203,6 +203,21 @@ enum AuthorizationStatus {
   EXPIRED
 }
 
+enum SchoolDocumentType {
+  ENROLLMENT_DECLARATION
+  ATTENDANCE_DECLARATION
+  REPORT_CARD
+  SCHOOL_RECORD
+  PAYMENT_RECEIPT
+  ENROLLMENT_CONTRACT
+  CUSTOM
+}
+
+enum SchoolDocumentStatus {
+  ISSUED
+  CANCELLED
+}
+
 model School {
   id        String       @id @default(cuid())
   name      String
@@ -231,6 +246,8 @@ model School {
   communicationSettings CommunicationSettings?
   communications Communication[]
   communicationAttachments CommunicationAttachment[]
+  documentTemplates DocumentTemplate[]
+  schoolDocuments SchoolDocument[]
   charges   Charge[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -262,6 +279,7 @@ model User {
   paymentsRecorded Payment[] @relation("PaymentRecordedBy")
   communicationsAuthored Communication[] @relation("CommunicationAuthor")
   communicationRecipients CommunicationRecipient[]
+  documentsIssued SchoolDocument[] @relation("DocumentIssuedBy")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -298,6 +316,7 @@ model Student {
   grades       Grade[]
   charges      Charge[]
   authorizationRequests AuthorizationRequest[]
+  schoolDocuments SchoolDocument[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -322,6 +341,7 @@ model Guardian {
   charges Charge[]
   communicationRecipients CommunicationRecipient[]
   authorizationRequests AuthorizationRequest[]
+  schoolDocuments SchoolDocument[]
   portalUser User?        @relation("GuardianPortalUser")
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -540,6 +560,7 @@ model Enrollment {
   charges              Charge[]
   communicationRecipients CommunicationRecipient[]
   targetedCommunications Communication[] @relation("TargetEnrollment")
+  schoolDocuments SchoolDocument[]
 
   @@unique([studentId, classId])
   @@index([classId, status])
@@ -885,6 +906,55 @@ model AuthorizationRequest {
   @@index([studentId, status])
 }
 
+
+model DocumentTemplate {
+  id          String             @id @default(cuid())
+  schoolId    String
+  school      School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  type        SchoolDocumentType
+  name        String
+  bodyTemplate String
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([schoolId, type, name])
+  @@index([schoolId, type, active])
+}
+
+model SchoolDocument {
+  id                 String               @id @default(cuid())
+  schoolId           String
+  school             School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  type               SchoolDocumentType
+  status             SchoolDocumentStatus @default(ISSUED)
+  title              String
+  studentId          String?
+  student            Student?             @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  enrollmentId       String?
+  enrollment         Enrollment?          @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  guardianId         String?
+  guardian           Guardian?            @relation(fields: [guardianId], references: [id], onDelete: SetNull)
+  chargeId           String?
+  charge             Charge?              @relation(fields: [chargeId], references: [id], onDelete: SetNull)
+  issuedByUserId     String
+  issuedBy           User                 @relation("DocumentIssuedBy", fields: [issuedByUserId], references: [id], onDelete: Restrict)
+  verificationCode   String               @unique
+  snapshot           Json
+  renderedHtml       String
+  issuedAt           DateTime             @default(now())
+  cancelledAt        DateTime?
+  cancellationReason String?
+  createdAt          DateTime             @default(now())
+
+  @@index([schoolId, type, issuedAt])
+  @@index([studentId, issuedAt])
+  @@index([enrollmentId, issuedAt])
+  @@index([guardianId, issuedAt])
+  @@index([chargeId])
+  @@index([issuedByUserId])
+}
+
 model BillingPlan {
   id                String   @id @default(cuid())
   schoolId          String
@@ -994,6 +1064,7 @@ model Charge {
   pixCopyPaste    String?
   pixQrCodeBase64 String?
   payments        Payment[]
+  schoolDocuments SchoolDocument[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
