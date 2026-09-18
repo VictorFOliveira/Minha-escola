@@ -26,6 +26,7 @@ const navItems: Array<{
   { href: "/dashboard/escola", label: "Escola", icon: "⌂", roles: ["ADMIN"] },
   { href: "/dashboard/onboarding", label: "Implantação", icon: "◇", roles: ["ADMIN"] },
   { href: "/dashboard/auditoria", label: "Auditoria", icon: "◎", roles: ["ADMIN"] },
+  { href: "/dashboard/privacidade", label: "Privacidade", icon: "◉", roles: ["ADMIN"] },
 ];
 
 function initials(name: string) {
