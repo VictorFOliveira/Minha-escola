@@ -1,18 +1,46 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { paginationFromRequest, paginationMeta } from "@/lib/pagination";
 
-export async function GET() {
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   if (session.role !== "ADMIN") return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
 
-  const employees = await prisma.employee.findMany({
-    where: { schoolId: session.schoolId },
-    orderBy: { name: "asc" },
+  const pagination = paginationFromRequest(request, {
+    defaultPageSize: 50,
+    maxPageSize: 100,
+    maxAll: 5000,
   });
+  const where = {
+    schoolId: session.schoolId,
+    ...(pagination.search
+      ? {
+          OR: [
+            { name: { contains: pagination.search, mode: "insensitive" as const } },
+            { jobTitle: { contains: pagination.search, mode: "insensitive" as const } },
+            { department: { contains: pagination.search, mode: "insensitive" as const } },
+            { email: { contains: pagination.search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
 
-  return NextResponse.json({ employees });
+  const [employees, total] = await Promise.all([
+    prisma.employee.findMany({
+      where,
+      orderBy: { name: "asc" },
+      skip: pagination.skip,
+      take: pagination.take,
+    }),
+    prisma.employee.count({ where }),
+  ]);
+
+  return NextResponse.json({
+    employees,
+    meta: paginationMeta(total, pagination.page, pagination.pageSize),
+  });
 }
 
 export async function POST(request: Request) {
