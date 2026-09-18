@@ -38,6 +38,13 @@ export async function PATCH(request: Request, context: Context) {
     typeof body?.planId === "string" && body.planId
       ? body.planId
       : undefined;
+  const billingProvider = ["MANUAL", "ASAAS"].includes(body?.provider)
+    ? body.provider
+    : undefined;
+  const billingInterval = ["MONTHLY", "ANNUAL"].includes(body?.billingInterval)
+    ? body.billingInterval
+    : undefined;
+
   const subscriptionStatus = [
     "TRIAL",
     "ACTIVE",
@@ -79,15 +86,21 @@ export async function PATCH(request: Request, context: Context) {
           ? { status: subscriptionStatus }
           : {}),
         trialEndsAt,
+        ...(billingProvider ? { provider: billingProvider } : {}),
+        ...(billingInterval ? { billingInterval } : {}),
+        ...(trialEndsAt ? { nextBillingAt: trialEndsAt } : {}),
       },
       create: {
         schoolId: id,
         planId,
         status: subscriptionStatus || "TRIAL",
         trialEndsAt,
+        provider: billingProvider || "MANUAL",
+        billingInterval: billingInterval || "MONTHLY",
+        nextBillingAt: trialEndsAt,
       },
     });
-  } else if (subscriptionStatus) {
+  } else if (subscriptionStatus || billingProvider || billingInterval) {
     const existing =
       await prisma.schoolSubscription.findUnique({
         where: { schoolId: id },
@@ -102,7 +115,11 @@ export async function PATCH(request: Request, context: Context) {
 
     await prisma.schoolSubscription.update({
       where: { schoolId: id },
-      data: { status: subscriptionStatus },
+      data: {
+        ...(subscriptionStatus ? { status: subscriptionStatus } : {}),
+        ...(billingProvider ? { provider: billingProvider } : {}),
+        ...(billingInterval ? { billingInterval } : {}),
+      },
     });
   }
 
@@ -116,6 +133,8 @@ export async function PATCH(request: Request, context: Context) {
       lifecycleStatus: lifecycleStatus || null,
       planId: planId || null,
       subscriptionStatus: subscriptionStatus || null,
+      provider: billingProvider || null,
+      billingInterval: billingInterval || null,
     },
   }).catch(() => null);
 
