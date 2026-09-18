@@ -28,9 +28,12 @@ Para releases que alterem consultas, autenticação, financeiro, sessão ou banc
 - [x] pelo menos 400 requisições HTTP;
 - [x] rajada concorrente executada;
 - [x] sem 5xx/timeouts inesperados;
-- [x] p95 comparado ao baseline documentado.
+- [x] p95 comparado ao baseline documentado;
+- [x] regressão destrutiva com 3.000 requests, concorrência 100/250 e 0 falhas;
+- [x] readiness + migration status validados após a carga;
+- [x] log destrutivo sem erros conhecidos de ORM, timeout, deadlock ou integridade.
 
-Baseline atual: `docs/LOAD_TEST_RESULTS_600.md`.
+Baselines atuais: `docs/LOAD_TEST_RESULTS_600.md` e `docs/DESTRUCTIVE_REGRESSION.md`.
 
 ## Gate operacional
 
