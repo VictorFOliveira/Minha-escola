@@ -50,7 +50,15 @@ export async function GET() {
       communication: {
         include: {
           author: { select: { id: true, name: true, role: true } },
-          attachments: true,
+          attachments: {
+            select: {
+              id: true,
+              name: true,
+              url: true,
+              mimeType: true,
+              fileAssetId: true,
+            },
+          },
           targetClass: { select: { id: true, name: true, schoolYear: true } },
         },
       },
@@ -83,6 +91,7 @@ export async function GET() {
                 id: true,
                 name: true,
                 url: true,
+                fileAssetId: true,
               },
             },
           },
