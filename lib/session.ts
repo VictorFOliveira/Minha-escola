@@ -14,6 +14,8 @@ export type SessionUser = {
   name: string;
   email: string;
   role: AppRole;
+  studentId?: string | null;
+  guardianId?: string | null;
 };
 
 type SessionPayload = SessionUser & {
@@ -40,9 +42,6 @@ export async function createSession(user: SessionUser) {
   const token = await new SignJWT({
     id: user.id,
     schoolId: user.schoolId,
-    schoolName: user.schoolName,
-    name: user.name,
-    email: user.email,
     role: user.role,
   })
     .setProtectedHeader({ alg: "HS256" })
@@ -71,25 +70,22 @@ export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
 
-  if (!token) {
-    return null;
-  }
+  if (!token) return null;
 
   try {
     const { payload } = await jwtVerify(token, getSecret());
 
-    if (typeof payload.sub !== "string") {
-      return null;
-    }
+    if (typeof payload.sub !== "string") return null;
 
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
       include: { school: true },
     });
 
-    if (!user || !user.active || !isAppRole(user.role)) {
-      return null;
-    }
+    if (!user || !user.active || !isAppRole(user.role)) return null;
+
+    if (user.role === "STUDENT" && !user.studentId) return null;
+    if (user.role === "GUARDIAN" && !user.guardianId) return null;
 
     return {
       sub: user.id,
@@ -99,6 +95,8 @@ export async function getSession(): Promise<SessionPayload | null> {
       name: user.name,
       email: user.email,
       role: user.role,
+      studentId: user.studentId,
+      guardianId: user.guardianId,
     };
   } catch {
     return null;
@@ -107,20 +105,12 @@ export async function getSession(): Promise<SessionPayload | null> {
 
 export async function requireSession() {
   const session = await getSession();
-
-  if (!session) {
-    redirect("/login");
-  }
-
+  if (!session) redirect("/login");
   return session;
 }
 
 export async function requireRole(roles: AppRole[]) {
   const session = await requireSession();
-
-  if (!roles.includes(session.role)) {
-    redirect("/dashboard?forbidden=1");
-  }
-
+  if (!roles.includes(session.role)) redirect("/acesso-negado");
   return session;
 }
