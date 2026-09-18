@@ -143,6 +143,22 @@ export async function POST(request: Request) {
         },
       }),
     ),
+    prisma.subjectFinalResult.updateMany({
+      where: {
+        classSubjectId,
+        enrollmentId: {
+          in: results.map(({ enrollment }) => enrollment.id),
+        },
+      },
+      data: {
+        annualAverage: null,
+        recoveryScore: null,
+        finalAverage: null,
+        status: "IN_PROGRESS",
+        closedAt: null,
+        closedByUserId: null,
+      },
+    }),
     prisma.enrollmentAcademicResult.updateMany({
       where: {
         enrollmentId: { in: results.map(({ enrollment }) => enrollment.id) },
