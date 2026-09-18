@@ -24,6 +24,11 @@ export type AsaasPixQrCode = {
   expirationDate?: string;
 };
 
+type AsaasList<T> = {
+  data?: T[];
+  totalCount?: number;
+};
+
 function getAsaasConfig() {
   const apiKey = process.env.ASAAS_API_KEY?.trim();
   const environment =
@@ -44,7 +49,10 @@ function getAsaasConfig() {
 }
 
 export function isAsaasConfigured() {
-  return Boolean(process.env.ASAAS_API_KEY?.trim());
+  return Boolean(
+    process.env.ASAAS_API_KEY?.trim() &&
+      process.env.ASAAS_WEBHOOK_TOKEN?.trim(),
+  );
 }
 
 async function asaasRequest<T>(
@@ -78,7 +86,7 @@ async function asaasRequest<T>(
 
 export async function createAsaasCustomer(input: {
   name: string;
-  cpfCnpj?: string | null;
+  cpfCnpj: string;
   mobilePhone?: string | null;
   email?: string | null;
   externalReference: string;
@@ -87,7 +95,7 @@ export async function createAsaasCustomer(input: {
     method: "POST",
     body: JSON.stringify({
       name: input.name,
-      cpfCnpj: input.cpfCnpj || undefined,
+      cpfCnpj: input.cpfCnpj,
       mobilePhone: input.mobilePhone || undefined,
       email: input.email || undefined,
       externalReference: input.externalReference,
@@ -122,4 +130,31 @@ export async function getAsaasPixQrCode(paymentId: string) {
     "/payments/" + encodeURIComponent(paymentId) + "/pixQrCode",
     { method: "GET" },
   );
+}
+
+
+export async function findAsaasCustomerByExternalReference(
+  externalReference: string,
+) {
+  const result = await asaasRequest<AsaasList<AsaasCustomer>>(
+    "/customers?externalReference=" +
+      encodeURIComponent(externalReference) +
+      "&limit=1",
+    { method: "GET" },
+  );
+
+  return result.data?.[0] || null;
+}
+
+export async function findAsaasPaymentByExternalReference(
+  externalReference: string,
+) {
+  const result = await asaasRequest<AsaasList<AsaasPayment>>(
+    "/payments?externalReference=" +
+      encodeURIComponent(externalReference) +
+      "&limit=1",
+    { method: "GET" },
+  );
+
+  return result.data?.[0] || null;
 }
