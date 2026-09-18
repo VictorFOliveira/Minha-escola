@@ -180,6 +180,10 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - aluno nunca usa o dashboard administrativo;
 - autorização é feita no servidor e não apenas por ocultação de menu.
 
+## Documentação técnica
+
+- [Fase 6 — Diário do Professor e Frequência](docs/FASE_6_DIARIO_FREQUENCIA.md)
+
 ## Próximas fases
 
 7. Boletim, fechamento de médias, recuperação e resultado final.
