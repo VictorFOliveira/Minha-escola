@@ -82,5 +82,45 @@ jobs:
           PLATFORM_AUTH_SECRET: ci-platform-secret-minimum-32-characters
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/minha_escola?schema=public
 
+      - name: Start compiled application
+        shell: bash
+        env:
+          NODE_ENV: production
+          AUTH_SECRET: ci-auth-secret-minimum-32-characters-2026
+          PLATFORM_AUTH_SECRET: ci-platform-secret-minimum-32-characters
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/minha_escola?schema=public
+          APP_URL: http://127.0.0.1:3000
+        run: |
+          set -euo pipefail
+          npm start > /tmp/minha-escola-next.log 2>&1 &
+          echo $! > /tmp/minha-escola-next.pid
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:3000/api/health/ready >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/minha-escola-next.log
+          exit 1
+
+      - name: HTTP end-to-end regression
+        env:
+          APP_URL: http://127.0.0.1:3000
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/minha_escola?schema=public
+        run: npm run test:e2e
+
+      - name: Application log
+        if: always()
+        shell: bash
+        run: tail -n 200 /tmp/minha-escola-next.log 2>/dev/null || true
+
+      - name: Stop compiled application
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/minha-escola-next.pid ]; then
+            kill "$(cat /tmp/minha-escola-next.pid)" 2>/dev/null || true
+          fi
+
       - name: Migration status
         run: npx prisma migrate status
