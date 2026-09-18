@@ -59,6 +59,7 @@ enum BillingValueType {
 enum PaymentProvider {
   MANUAL
   ASAAS
+  EXTERNAL
 }
 
 enum PaymentMethod {
@@ -181,6 +182,7 @@ model School {
   billingPlans BillingPlan[]
   billingContracts BillingContract[]
   paymentCustomers PaymentCustomer[]
+  financeSettings FinanceSettings?
   charges   Charge[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -692,6 +694,19 @@ model Grade {
   updatedAt DateTime   @updatedAt
 
   @@index([studentId, classId])
+}
+
+model FinanceSettings {
+  id                    String          @id @default(cuid())
+  schoolId              String          @unique
+  school                 School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  provider               PaymentProvider @default(MANUAL)
+  gatewayEnabled         Boolean         @default(false)
+  externalPaymentUrl     String?
+  sendBillingToGuardian  Boolean         @default(true)
+  sendReportToGuardian   Boolean         @default(true)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
 }
 
 model BillingPlan {
