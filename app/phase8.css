@@ -1,0 +1,411 @@
+.finance-manager {
+  display: grid;
+  gap: 22px;
+}
+
+.finance-heading-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.finance-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.finance-kpis article,
+.finance-plan-grid article {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+  display: grid;
+  gap: 5px;
+}
+
+.finance-kpis span,
+.finance-kpis small,
+.finance-plan-grid span,
+.finance-plan-grid small,
+.finance-contract-list small,
+.finance-contract-list span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.finance-kpis strong {
+  font-size: 22px;
+  letter-spacing: -.03em;
+}
+
+.finance-settings-form,
+.finance-plan-form,
+.finance-contract-form,
+.finance-benefit-form,
+.finance-payment-form {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 15px;
+  border: 1px solid #e4eaf3;
+  background: #f8fafc;
+}
+
+.finance-settings-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.finance-plan-form {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.finance-contract-form {
+  grid-template-columns: 1.4fr 1fr 180px 1fr auto;
+  align-items: end;
+}
+
+.finance-benefit-form {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+  align-items: end;
+}
+
+.finance-payment-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.finance-settings-form label,
+.finance-plan-form label,
+.finance-contract-form label,
+.finance-benefit-form label,
+.finance-payment-form label {
+  display: grid;
+  gap: 7px;
+  color: #41506a;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.finance-settings-form input,
+.finance-settings-form select,
+.finance-plan-form input,
+.finance-plan-form select,
+.finance-contract-form input,
+.finance-contract-form select,
+.finance-benefit-form input,
+.finance-benefit-form select,
+.finance-payment-form input,
+.finance-payment-form select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #d8e0ea;
+  border-radius: 10px;
+  background: white;
+  color: var(--text);
+  padding: 0 11px;
+  outline: none;
+}
+
+.finance-field--wide {
+  grid-column: span 2;
+}
+
+.finance-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.finance-plan-grid b {
+  font-size: 19px;
+  color: #315fae;
+}
+
+.finance-guardian-preview {
+  min-height: 42px;
+  padding: 8px 11px;
+  border: 1px solid #d8e0ea;
+  border-radius: 10px;
+  background: white;
+  display: grid;
+  gap: 2px;
+}
+
+.finance-guardian-preview small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.finance-guardian-preview strong {
+  font-size: 11px;
+}
+
+.finance-contract-list {
+  display: grid;
+}
+
+.finance-contract-list article {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr .6fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 15px 0;
+  border-top: 1px solid #edf0f4;
+}
+
+.finance-contract-list article:first-child {
+  border-top: 0;
+}
+
+.finance-contract-list article > div {
+  display: grid;
+  gap: 3px;
+}
+
+.finance-contract-actions {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.finance-status--overdue {
+  background: #feeceb;
+  color: #b83b35;
+}
+
+.finance-charge-table th,
+.finance-charge-table td {
+  white-space: nowrap;
+}
+
+.finance-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(10, 17, 34, .6);
+  backdrop-filter: blur(5px);
+}
+
+.finance-modal {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 22px;
+  border-radius: 20px;
+  background: white;
+  border: 1px solid var(--line);
+  box-shadow: 0 30px 80px rgba(15, 23, 42, .25);
+}
+
+.external-payment-card {
+  padding: 20px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e4eaf3;
+}
+
+.external-payment-card p {
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 12px;
+}
+
+.guardian-report-stack,
+.guardian-charge-list {
+  display: grid;
+  gap: 12px;
+}
+
+.guardian-report-card,
+.guardian-charge-list article {
+  padding: 16px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e7ebf1;
+}
+
+.guardian-report-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.guardian-report-head > div {
+  display: grid;
+  gap: 3px;
+}
+
+.guardian-report-head span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.guardian-report-subjects {
+  display: grid;
+}
+
+.guardian-report-subjects > div {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 70px 150px;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 0;
+  border-top: 1px solid #e9edf3;
+}
+
+.guardian-report-subjects > div > span {
+  display: grid;
+  gap: 2px;
+}
+
+.guardian-report-subjects small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.guardian-report-subjects em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.guardian-report-note {
+  margin: 12px 0 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: white;
+  color: #536174;
+  font-size: 11px;
+}
+
+.guardian-external-payment {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  padding: 16px;
+  margin-bottom: 14px;
+  border-radius: 13px;
+  background: #edf3ff;
+  border: 1px solid #d9e5ff;
+}
+
+.guardian-external-payment p {
+  margin: 4px 0 0;
+  color: #536174;
+  font-size: 11px;
+}
+
+.guardian-charge-list article {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.3fr) 120px 100px minmax(130px, auto);
+  gap: 14px;
+  align-items: center;
+}
+
+.guardian-charge-list article > div:first-child,
+.guardian-charge-value {
+  display: grid;
+  gap: 3px;
+}
+
+.guardian-charge-list span,
+.guardian-charge-list small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.guardian-charge-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.guardian-charge-actions details {
+  max-width: 220px;
+}
+
+.guardian-charge-actions summary {
+  cursor: pointer;
+  color: #315fae;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.guardian-charge-actions code {
+  display: block;
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #101b36;
+  color: white;
+  white-space: normal;
+  word-break: break-all;
+  font-size: 8px;
+}
+
+@media (max-width: 1080px) {
+  .finance-kpis,
+  .finance-plan-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .finance-plan-form,
+  .finance-benefit-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .finance-contract-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .finance-contract-list article {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .finance-contract-actions {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 760px) {
+  .finance-heading-actions,
+  .guardian-external-payment {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .finance-kpis,
+  .finance-plan-grid,
+  .finance-settings-form,
+  .finance-plan-form,
+  .finance-contract-form,
+  .finance-benefit-form,
+  .finance-payment-form,
+  .finance-contract-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .finance-field--wide,
+  .finance-contract-actions {
+    grid-column: auto;
+  }
+
+  .guardian-report-subjects > div,
+  .guardian-charge-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .finance-heading-actions .button,
+  .guardian-external-payment .button {
+    width: 100%;
+  }
+}
