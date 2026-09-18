@@ -101,6 +101,15 @@ export async function POST(request: Request) {
           ? new Date(payload.payment.confirmedDate + "T12:00:00.000Z")
           : new Date();
 
+      const existingPayment = await tx.payment.findUnique({
+        where: {
+          provider_externalId: {
+            provider: "ASAAS",
+            externalId: paymentId,
+          },
+        },
+      });
+
       await tx.payment.upsert({
         where: {
           provider_externalId: {
@@ -126,8 +135,12 @@ export async function POST(request: Request) {
         },
       });
 
+      const previousExternalAmount = existingPayment
+        ? Number(existingPayment.amount)
+        : 0;
+      const delta = Math.max(0, amount - previousExternalAmount);
       const newPaidAmount = roundMoney(
-        Math.max(Number(charge.paidAmount), amount),
+        Number(charge.paidAmount) + delta,
       );
 
       await tx.charge.update({
