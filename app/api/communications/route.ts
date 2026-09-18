@@ -110,6 +110,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (Boolean(body?.requiresAuthorization) && audience === "STAFF") {
+    return NextResponse.json(
+      { error: "Autorização de responsável não se aplica a comunicado exclusivo da equipe." },
+      { status: 400 },
+    );
+  }
+
   const attachments = Array.isArray(body?.attachments)
     ? body.attachments
         .filter(
