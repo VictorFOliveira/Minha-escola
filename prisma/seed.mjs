@@ -88,17 +88,26 @@ async function main() {
     },
   });
 
+  const demoPeriodStart = new Date();
+  const demoPeriodEnd = new Date(demoPeriodStart);
+  demoPeriodEnd.setUTCMonth(demoPeriodEnd.getUTCMonth() + 1);
+
   await prisma.schoolSubscription.upsert({
     where: { schoolId: school.id },
     update: {
       planId: starter.id,
       status: "ACTIVE",
+      currentPeriodStart: demoPeriodStart,
+      currentPeriodEnd: demoPeriodEnd,
+      nextBillingAt: demoPeriodEnd,
     },
     create: {
       schoolId: school.id,
       planId: starter.id,
       status: "ACTIVE",
-      currentPeriodStart: new Date(),
+      currentPeriodStart: demoPeriodStart,
+      currentPeriodEnd: demoPeriodEnd,
+      nextBillingAt: demoPeriodEnd,
     },
   });
 
