@@ -15,16 +15,31 @@ export async function POST(request: Request) {
 
   const user = await prisma.user.findUnique({
     where: { email },
-    include: { school: true },
+    include: {
+      school: true,
+      enrollment: {
+        include: {
+          class: true,
+          student: true,
+        },
+      },
+    },
   });
 
   if (!user || !user.active || !isAppRole(user.role)) {
     return NextResponse.json({ error: "E-mail ou senha inválidos." }, { status: 401 });
   }
 
-  if (user.role === "STUDENT" && !user.studentId) {
+  if (
+    user.role === "STUDENT" &&
+    (
+      !user.enrollment ||
+      user.enrollment.class.schoolId !== user.schoolId ||
+      !["ACTIVE", "PENDING"].includes(user.enrollment.status)
+    )
+  ) {
     return NextResponse.json(
-      { error: "A conta do aluno ainda não está vinculada a um cadastro acadêmico." },
+      { error: "A conta do aluno não está vinculada a uma matrícula válida." },
       { status: 403 },
     );
   }
@@ -61,7 +76,7 @@ export async function POST(request: Request) {
     name: user.name,
     email: user.email,
     role: user.role,
-    studentId: user.studentId,
+    enrollmentId: user.enrollmentId,
     guardianId: user.guardianId,
     teacherId: user.teacherId,
   });
