@@ -1,5 +1,6 @@
 export const APP_ROLES = [
   "ADMIN",
+  "COORDINATOR",
   "SECRETARY",
   "TEACHER",
   "FINANCE",
@@ -11,6 +12,7 @@ export type AppRole = (typeof APP_ROLES)[number];
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   ADMIN: "Administrador",
+  COORDINATOR: "Coordenação",
   SECRETARY: "Secretaria",
   TEACHER: "Professor",
   FINANCE: "Financeiro",
@@ -20,6 +22,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 
 export const ROLE_DESCRIPTIONS: Record<AppRole, string> = {
   ADMIN: "Acesso total à escola e gestão de usuários.",
+  COORDINATOR: "Gestão acadêmica, avaliações, acompanhamento e turmas.",
   SECRETARY: "Alunos, matrículas, turmas e frequência.",
   TEACHER: "Turmas, frequência e recursos acadêmicos.",
   FINANCE: "Cobranças, recebimentos e indicadores financeiros.",
@@ -39,6 +42,7 @@ export function homePathForRole(role: AppRole) {
 
 export const BACKOFFICE_ROLES: AppRole[] = [
   "ADMIN",
+  "COORDINATOR",
   "SECRETARY",
   "TEACHER",
   "FINANCE",
