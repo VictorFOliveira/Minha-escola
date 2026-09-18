@@ -27,7 +27,7 @@ export function LoginForm() {
         return;
       }
 
-      window.location.href = "/dashboard";
+      window.location.href = data.homePath || "/dashboard";
     } catch {
       setError("Não foi possível conectar ao servidor.");
     } finally {
