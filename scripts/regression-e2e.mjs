@@ -218,6 +218,12 @@ async function main() {
     });
     await expectStatus(invalidBirthDate, 400, "invalid student birth date");
 
+    const malformedStudent = await authed(secretaryCookie, "/api/students", {
+      method: "POST",
+      body: "{",
+    });
+    await expectStatus(malformedStudent, 400, "malformed student JSON");
+
     const oversizedKey = await authed(secretaryCookie, "/api/students", {
       method: "POST",
       headers: { "Idempotency-Key": "x".repeat(201) },
@@ -449,6 +455,14 @@ async function main() {
         gradeLevel: "1º ano",
         shift: "Tarde",
         schoolYear: 2027,
+      },
+    });
+    const foreignStudent = await prisma.student.create({
+      data: {
+        schoolId: schoolB.id,
+        name: "SEGREDO TENANT B " + suffix,
+        registration: "FOREIGN-" + suffix,
+        status: "ACTIVE",
       },
     });
 
@@ -836,6 +850,12 @@ async function main() {
       true,
       "dashboard deve renderizar aluno real do tenant",
     );
+    assert.equal(
+      typeof dashboard.data === "string" &&
+        dashboard.data.includes(foreignStudent.name),
+      false,
+      "dashboard nunca pode vazar dados de outro tenant",
+    );
 
     const privacyExport = await authed(
       secretaryCookie,
@@ -855,6 +875,14 @@ async function main() {
       },
     });
     assert.equal(enrollmentCount, 1);
+
+    const logout = await authed(secretaryCookie, "/api/auth/logout", {
+      method: "POST",
+    });
+    await expectStatus(logout, 200, "logout");
+
+    const revokedSession = await authed(secretaryCookie, "/api/auth/me");
+    await expectStatus(revokedSession, 401, "revoked session must be rejected");
 
     console.log("HTTP end-to-end regression: OK");
   } finally {
