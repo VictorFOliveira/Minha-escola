@@ -232,6 +232,40 @@ export function SuperadminDashboard() {
     }
   }
 
+  async function startSupport(school: School) {
+    const reason = window.prompt(
+      "Motivo do acesso de suporte (mínimo 10 caracteres):",
+    ) || "";
+
+    if (reason.trim().length < 10) return;
+
+    setWorking("support:" + school.id);
+    setError("");
+
+    try {
+      const response = await fetch(
+        "/api/platform/schools/" + school.id + "/impersonate",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason }),
+        },
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Não foi possível iniciar o modo suporte.");
+        return;
+      }
+
+      window.location.href = data.homePath || "/dashboard";
+    } catch {
+      setError("Não foi possível conectar ao servidor.");
+    } finally {
+      setWorking("");
+    }
+  }
+
   async function issueInvoice(school: School) {
     setWorking("invoice:" + school.id);
     setError("");
@@ -535,6 +569,14 @@ export function SuperadminDashboard() {
                   </label>
 
                   <div className="platform-billing-actions">
+                    <button
+                      className="button button--secondary button--small"
+                      type="button"
+                      disabled={working === "support:" + school.id}
+                      onClick={() => void startSupport(school)}
+                    >
+                      Entrar como suporte
+                    </button>
                     <small>
                       Próxima:{" "}
                       {school.subscription.nextBillingAt
