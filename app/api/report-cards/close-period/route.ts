@@ -65,6 +65,11 @@ export async function POST(request: Request) {
     where: {
       classId: classSubject.classId,
       status: { not: "CANCELLED" },
+      startedAt: { lte: period.endDate },
+      OR: [
+        { endedAt: null },
+        { endedAt: { gte: period.startDate } },
+      ],
     },
     include: { student: true },
   });
