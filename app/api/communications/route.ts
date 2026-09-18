@@ -205,13 +205,20 @@ export async function POST(request: Request) {
         ? new Date(String(body.expiresAt) + "T23:59:59.000Z")
         : null,
       attachments: {
-        create: attachments.map((item) => ({
+        create: attachments.map(
+          (item: {
+            name: string;
+            fileAssetId: string | null;
+            url: string | null;
+            mimeType: string | null;
+          }) => ({
           schoolId: session.schoolId,
           name: item.name,
           fileAssetId: item.fileAssetId,
           url: item.url,
           mimeType: item.mimeType,
-        })),
+        }),
+        ),
       },
     },
     include: {
