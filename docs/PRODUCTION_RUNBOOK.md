@@ -2,63 +2,113 @@
 
 ## Objetivo
 
-Checklist operacional para publicar o Minha Escola com dados reais.
+Operar o Minha Escola com dados reais usando migrations versionadas, HTTPS, health checks, backups e rollback controlado.
 
 ## Pré-requisitos
 
-- Node.js 22;
+- Node.js 22 para execução sem Docker;
+- Docker + Docker Compose para o fluxo recomendado em VPS;
 - PostgreSQL 16 ou compatível;
-- domínio com HTTPS;
+- domínio/DNS;
 - secrets fora do repositório;
 - storage S3-compatible privado;
+- scanner de malware;
 - serviço de backup do banco;
-- opcionalmente Asaas, Resend e Meta WhatsApp.
+- opcionalmente Sentry, Asaas, Resend e Meta WhatsApp.
+
+## Artefatos de release
+
+O `main` deve conter:
+
+- `package-lock.json`;
+- `prisma/migrations/migration_lock.toml`;
+- `prisma/migrations/00000000000000_baseline/migration.sql`.
+
+Instalação de produção usa `npm ci`.
 
 ## Banco
 
-Em produção use migrations versionadas:
+Em produção:
 
-```bash
+~~~bash
 npm ci
 npm run db:generate
 npm run db:migrate:deploy
-```
+~~~
 
-Não use `prisma db push` como mecanismo de deploy de produção.
+Nunca use `prisma db push` como mecanismo de deploy.
 
-O readiness do banco pode ser verificado em:
+## VPS
 
-```
-GET /api/health/ready
-```
+Arquivos:
+
+- `docker-compose.production.yml`;
+- `ops/Caddyfile`;
+- `.env.production.example`;
+- `scripts/deploy-production.sh`.
+
+Guia completo: `docs/VPS_DEPLOYMENT.md`.
+
+O compose não publica PostgreSQL na internet. Caddy expõe apenas HTTP/HTTPS e obtém TLS automaticamente quando DNS e domínio estão corretos.
 
 ## Deploy
 
-A imagem pode ser criada com:
+~~~bash
+cp .env.production.example .env.production
+# preencher secrets
+bash scripts/deploy-production.sh
+~~~
 
-```bash
-docker build -t minha-escola .
-```
+O deploy executa migration antes de substituir/levantar o serviço web e só encerra com sucesso depois de readiness verde.
 
-O processo deve receber as variáveis descritas em `.env.example`.
+## Health
+
+Públicos:
+
+- `GET /api/health`;
+- `GET /api/health/ready`.
+
+Protegido:
+
+~~~text
+GET /api/health/ops
+Authorization: Bearer CRON_SECRET
+~~~
+
+O endpoint operacional não retorna segredos. Ele informa versão, status do banco, conexões, jobs recentes, falhas nas últimas 24h, uploads pendentes e presença/ausência das integrações.
+
+## Monitoramento
+
+`.github/workflows/production-health.yml` verifica a produção a cada 15 minutos quando os seguintes secrets estiverem configurados:
+
+- `PRODUCTION_APP_URL`;
+- `CRON_SECRET`.
+
+Falha de readiness, banco ou job recente faz o workflow falhar e ficar visível no GitHub Actions.
+
+Sentry é opcional e ativado por:
+
+- `SENTRY_DSN`;
+- `SENTRY_ENVIRONMENT`;
+- `SENTRY_TRACES_SAMPLE_RATE`.
 
 ## Jobs
 
 ### Comunicação
 
-Pode rodar de hora em hora:
-
-```
+~~~text
 POST /api/jobs/communications
 Authorization: Bearer CRON_SECRET
-```
+~~~
+
+Processa fila de comunicação e webhooks de saída.
 
 ### Manutenção diária
 
-```
+~~~text
 POST /api/jobs/daily
 Authorization: Bearer CRON_SECRET
-```
+~~~
 
 Executa:
 
@@ -68,34 +118,32 @@ Executa:
 - cobrança do SaaS;
 - suspensão por inadimplência após carência;
 - limpeza de uploads abandonados;
-- limpeza de throttles expirados;
-- retenção de logs de auditoria.
+- limpeza de throttles;
+- limpeza de idempotências expiradas;
+- limpeza de tokens de reset expirados;
+- retenção de auditoria.
 
-O workflow `.github/workflows/scheduled-jobs.yml` pode chamar essas rotas quando `PRODUCTION_APP_URL` e `CRON_SECRET` forem configurados como GitHub Actions Secrets.
+O workflow `scheduled-jobs.yml` chama essas rotas.
 
-## Storage
+## Storage/upload
 
-O bucket deve ser privado.
-
-O backend fornece URLs assinadas de curta duração para upload/download e mantém apenas a chave do objeto no banco.
-
-Nunca torne o bucket público para simplificar anexos.
+- bucket sempre privado;
+- URLs assinadas curtas;
+- HTML/SVG fora da allowlist;
+- limite de tamanho no backend;
+- em produção o malware scan é obrigatório por padrão;
+- arquivo pendente não fica disponível;
+- resultado infectado remove o objeto.
 
 ## Comunicação
 
 ### E-mail
 
-Configure:
-
 - `RESEND_API_KEY`;
 - `EMAIL_FROM`;
 - `APP_URL`.
 
-Na escola, habilite o canal e configure o provider como `RESEND`.
-
 ### WhatsApp
-
-Configure:
 
 - `WHATSAPP_ACCESS_TOKEN`;
 - `WHATSAPP_PHONE_NUMBER_ID`;
@@ -103,66 +151,67 @@ Configure:
 - `WHATSAPP_TEMPLATE_NAME`;
 - `WHATSAPP_TEMPLATE_LANGUAGE`.
 
-Na escola, habilite o canal e configure o provider como `META_CLOUD`.
-
-O template precisa estar aprovado pela conta Meta usada no deploy.
+Templates precisam estar aprovados na Meta.
 
 ## Pagamentos
 
-Existem duas integrações independentes:
+Há duas contas independentes:
 
-1. Asaas de uma escola, usado nas mensalidades de alunos;
-2. Asaas da plataforma, usado para cobrar a assinatura do Minha Escola.
+1. Asaas da escola, para mensalidades;
+2. Asaas da plataforma, para assinatura do SaaS.
 
-Nunca compartilhe as chaves entre esses dois contextos por conveniência.
+Nunca reutilize a mesma chave por conveniência.
 
 ## Backup
 
-Use backup gerenciado do provedor PostgreSQL como primeira camada.
+Backup/PITR do provedor é a primeira camada recomendada.
 
-O script `scripts/backup-postgres.sh` fornece uma segunda opção operacional usando `pg_dump`.
+Segunda camada:
 
-Teste a restauração regularmente com `scripts/restore-postgres.sh` em banco isolado.
+~~~bash
+bash scripts/backup-postgres.sh
+~~~
 
-Um backup que nunca foi restaurado em teste não deve ser considerado validado.
+Restauração exige confirmação explícita:
 
-## Segurança
+~~~bash
+ALLOW_DATABASE_RESTORE=YES_I_KNOW \
+  bash scripts/restore-postgres.sh backup.dump
+~~~
 
-Antes de liberar uma escola:
+`.github/workflows/restore-drill.yml` testa mensalmente backup + restauração em banco isolado e verifica também o histórico de migrations.
 
-- secrets com 32+ caracteres;
-- HTTPS obrigatório;
-- Superadmin separado;
+## Segurança mínima
+
+- secrets independentes com 32+ caracteres;
+- MFA para ADMIN/Superadmin;
+- HTTPS;
 - bucket privado;
-- webhook tokens separados das API keys;
-- rate limiting ativo;
-- Postgres sem exposição pública desnecessária;
-- usuário do banco com permissões mínimas para a aplicação;
+- scanner ativo;
+- Postgres não exposto publicamente;
+- usuário do banco com menor privilégio operacional possível;
 - backups ativos;
-- logs/alertas do provedor ativos.
+- logs/alertas;
+- dependency audit e CodeQL verdes.
+
+## Performance
+
+Resultado de referência em `docs/LOAD_TEST_RESULTS_600.md`:
+
+- 5.000 alunos;
+- 3.000 cobranças;
+- 600 requisições;
+- 100 concorrentes na rajada;
+- 0 falhas nesse ambiente de CI.
+
+Isso não substitui teste na VPS escolhida.
 
 ## Rollback
 
-Se uma versão nova falhar:
-
-1. pare novas implantações;
-2. não reverta migration destrutiva sem backup;
-3. restaure a versão anterior da aplicação;
-4. confira `prisma migrate status`;
+1. interrompa novos deploys;
+2. mantenha banco/migrations intactos até entender o incidente;
+3. volte aplicação para commit/imagem anterior compatível;
+4. execute `prisma migrate status`;
 5. valide `/api/health/ready`;
-6. execute smoke tests;
-7. só então reabra tráfego.
-
-## Observabilidade mínima
-
-No provedor escolhido configure alertas para:
-
-- HTTP 5xx;
-- readiness 503;
-- uso de CPU/memória;
-- conexões PostgreSQL;
-- espaço do banco;
-- falha de jobs agendados;
-- falha de backups;
-- aumento anormal de 401/429;
-- webhook com erro recorrente.
+6. execute `scripts/smoke-production.sh`;
+7. restaure banco somente se a recuperação realmente exigir e houver backup validado.
