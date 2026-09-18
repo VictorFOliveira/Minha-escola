@@ -20,6 +20,7 @@ type Period = {
   order: number;
   startDate: string;
   endDate: string;
+  weight: string | number;
   status: "PLANNED" | "ACTIVE" | "CLOSED";
 };
 
@@ -142,6 +143,7 @@ export function SubjectPeriodManager() {
         name: String(form.get("name") || ""),
         startDate: String(form.get("startDate") || ""),
         endDate: String(form.get("endDate") || ""),
+        weight: String(form.get("weight") || "1"),
         status: String(form.get("status") || "PLANNED"),
       }),
     });
@@ -301,6 +303,10 @@ export function SubjectPeriodManager() {
               <input name="endDate" type="date" required />
             </label>
             <label>
+              Peso
+              <input name="weight" type="number" min="0.1" step="0.1" required defaultValue="1" />
+            </label>
+            <label>
               Status
               <select name="status" defaultValue="PLANNED">
                 <option value="PLANNED">Planejado</option>
@@ -319,7 +325,7 @@ export function SubjectPeriodManager() {
               <div>
                 <strong>{item.name}</strong>
                 <small>
-                  {item.schoolYear} •{" "}
+                  {item.schoolYear} • peso {Number(item.weight).toFixed(2)} •{" "}
                   {new Intl.DateTimeFormat("pt-BR").format(new Date(item.startDate))} a{" "}
                   {new Intl.DateTimeFormat("pt-BR").format(new Date(item.endDate))}
                 </small>
