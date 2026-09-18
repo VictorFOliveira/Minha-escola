@@ -18,7 +18,7 @@ Plataforma web de gestão escolar para centralizar a rotina administrativa, acad
 - sessão assinada em cookie HttpOnly;
 - validação do usuário ativo no banco;
 - hash de senha com bcrypt;
-- perfis ADMIN, SECRETARY, TEACHER, FINANCE e GUARDIAN;
+- perfis ADMIN, COORDINATOR, SECRETARY, TEACHER, FINANCE, STUDENT e GUARDIAN;
 - menu e rotas protegidos por perfil;
 - dashboard limitado conforme o perfil;
 - gestão de usuários pelo administrador;
@@ -66,10 +66,12 @@ Acesse http://localhost:3000/login.
 | Perfil | Acesso inicial |
 | --- | --- |
 | ADMIN | Todos os módulos e administração de usuários |
-| SECRETARY | Alunos, turmas e frequência |
-| TEACHER | Turmas e frequência |
+| COORDINATOR | Estrutura acadêmica, avaliações, acompanhamento e turmas |
+| SECRETARY | Alunos, matrículas, turmas e frequência |
+| TEACHER | Turmas atribuídas, avaliações e diário acadêmico |
 | FINANCE | Financeiro |
-| GUARDIAN | Login isolado; portal do responsável será conectado em fase posterior |
+| STUDENT | Portal próprio vinculado à matrícula ativa/pendente |
+| GUARDIAN | Portal próprio vinculado ao cadastro de responsável |
 
 A autorização acontece no servidor. Ocultar o item do menu não é usado como mecanismo de segurança.
 
@@ -87,7 +89,11 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - /dashboard/matriculas
 - /dashboard/turmas
 - /dashboard/escola
+- /dashboard/academico
+- /dashboard/avaliacoes
 - /dashboard/frequencia
+- /portal/aluno
+- /portal/responsavel
 - /dashboard/financeiro
 - /dashboard/usuarios — somente ADMIN
 - /api/auth/login
@@ -120,10 +126,32 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - preservação do histórico acadêmico;
 - filtro de matrículas por ano e busca por aluno/turma.
 
+### Fase 5 — Estrutura acadêmica e desempenho ✅
+- catálogo de disciplinas;
+- períodos letivos;
+- grade curricular por série/etapa e ano;
+- aplicação de grade à turma;
+- professor por disciplina;
+- quadro de horários por disciplina;
+- perfil COORDINATOR;
+- conta STUDENT vinculada diretamente à matrícula;
+- conta TEACHER vinculada ao cadastro docente;
+- conta GUARDIAN vinculada ao responsável;
+- rematrícula move automaticamente a conta do aluno para a nova matrícula;
+- avaliações por disciplina e período;
+- tipos de avaliação: prova, quiz, trabalho, projeto, participação e outros;
+- nota máxima e peso configuráveis;
+- lançamento de notas por matrícula;
+- média parcial ponderada no portal do aluno;
+- feedback da avaliação;
+- acompanhamento formativo com visibilidade interna, aluno, responsável ou ambos;
+- portal do aluno com turma, grade, professores, horários, frequência, avaliações e desempenho;
+- portal do responsável isolado do backoffice;
+- professor limitado às turmas/disciplinas atribuídas.
+
 ## Próximas fases
 
-5. Estrutura acadêmica: disciplinas, grade curricular e períodos.
-6. Frequência e diário do professor.
+6. Frequência por disciplina e diário completo do professor.
 7. Notas, avaliações e boletins.
 8. Financeiro completo e pagamentos.
 9. Portal do responsável e comunicação.
