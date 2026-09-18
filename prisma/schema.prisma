@@ -439,7 +439,6 @@ model AssessmentScore {
 
   @@unique([assessmentId, enrollmentId])
   @@index([enrollmentId])
-  @@index([recordedByUserId])
 }
 
 model AcademicFeedback {
@@ -502,6 +501,7 @@ model LessonAttendance {
 
   @@unique([lessonId, enrollmentId])
   @@index([enrollmentId])
+  @@index([recordedByUserId])
 }
 
 model Attendance {
