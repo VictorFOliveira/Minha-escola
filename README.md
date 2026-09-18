@@ -266,6 +266,31 @@ A autorização acontece no servidor. Ocultar o item do menu não é usado como 
 - headers básicos de segurança;
 - seed de planos e Superadmin.
 
+
+## Production Hardening — pré-regressão ✅
+
+Antes da regressão ponta a ponta, a base recebeu uma camada adicional de produção:
+
+- MFA/TOTP obrigatório para ADMIN e Superadmin, com códigos de recuperação;
+- sessões persistidas, histórico de dispositivos e revogação imediata;
+- eventos de segurança com request ID, IP anonimizado/hash e auditoria;
+- feature flags reais por plano SaaS;
+- importação em massa CSV/XLSX de alunos, responsáveis, professores, turmas e matrículas;
+- exportações administrativas CSV/XLSX/PDF;
+- API v1 autenticada por chave e scopes;
+- webhooks de saída assinados com retry;
+- modo suporte/impersonação do Superadmin com motivo obrigatório, MFA, banner e auditoria;
+- idempotência em operações críticas, incluindo matrícula e criação de aluno;
+- storage privado S3/R2, URLs assinadas e estado de malware scan;
+- LGPD: exportação, consentimento, solicitações, retenção e anonimização controlada;
+- billing do próprio SaaS separado do financeiro escolar;
+- e-mail transacional, WhatsApp Meta Cloud API e filas com retry;
+- rate limit persistente;
+- Docker, health/readiness, jobs, backup/restore, Dependabot e CodeQL;
+- CI com PostgreSQL real e testes de isolamento multi-tenant.
+
+A regressão ponta a ponta completa continua sendo o próximo gate depois que CI, build e artefatos de migration estiverem verdes.
+
 ## Documentação técnica
 
 - [Fase 6 — Diário do Professor e Frequência](docs/FASE_6_DIARIO_FREQUENCIA.md)
