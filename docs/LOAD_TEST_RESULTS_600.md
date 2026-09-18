@@ -91,3 +91,20 @@ O teste falha automaticamente caso:
 Resultado: **PASSOU**.
 
 Este teste demonstra boa resposta neste cenário de referência, mas não substitui dimensionamento do ambiente de produção. Banco, CPU, memória, latência de rede e integrações externas influenciam a capacidade real.
+
+
+## Revalidação final
+
+Após o pacote de produção, paginação e ajustes operacionais, o cenário foi executado novamente em 18/09/2026.
+
+Resultado observado:
+
+- 600 requisições;
+- 0 falhas;
+- taxa de erro: 0%;
+- p95 sustentado: 274,89 ms;
+- p99 sustentado: 686,19 ms;
+- p95 da rajada de 100 concorrentes: 481,81 ms;
+- p99 da rajada: 687,30 ms.
+
+A revalidação também passou integralmente. Os números continuam sendo referência de CI; a VPS final deve ter seu próprio benchmark.
