@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSession } from "@/lib/session";
 import { homePathForRole, isAppRole } from "@/lib/permissions";
+import { auditUserAction } from "@/lib/audit";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -94,6 +95,14 @@ export async function POST(request: Request) {
     where: { id: user.id },
     data: { lastLoginAt: new Date() },
   });
+
+  await auditUserAction({
+    schoolId: user.schoolId,
+    userId: user.id,
+    action: "LOGIN",
+    entityType: "User",
+    entityId: user.id,
+  }).catch(() => null);
 
   await createSession({
     id: user.id,
