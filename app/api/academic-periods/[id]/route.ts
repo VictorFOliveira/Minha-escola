@@ -99,6 +99,15 @@ export async function DELETE(_: Request, context: Context) {
   const { id } = await context.params;
   const current = await prisma.academicPeriod.findFirst({
     where: { id, schoolId: session.schoolId },
+    include: {
+      _count: {
+        select: {
+          assessments: true,
+          lessons: true,
+          periodGrades: true,
+        },
+      },
+    },
   });
 
   if (!current) return NextResponse.json({ error: "Período letivo não encontrado." }, { status: 404 });
