@@ -85,18 +85,6 @@ export async function POST(request: Request) {
       teacherId: admin.teacherId,
     };
 
-    const overdueCharges = await prisma.charge.findMany({
-      where: {
-        schoolId: school.id,
-        status: { in: ["PENDING", "PARTIAL"] },
-        dueDate: { lt: now },
-        paidAmount: { lt: prisma.charge.fields.amount },
-      },
-      select: { id: true },
-    }).catch(() => []);
-
-    // Prisma não suporta comparação coluna-a-coluna de Decimal em todos os bancos;
-    // a atualização real é feita abaixo com os valores carregados.
     const overdueCandidates = await prisma.charge.findMany({
       where: {
         schoolId: school.id,
