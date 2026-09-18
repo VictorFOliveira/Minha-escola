@@ -244,7 +244,7 @@ model School {
   id        String       @id @default(cuid())
   name      String
   slug      String?      @unique
-  lifecycleStatus SchoolLifecycleStatus @default(ONBOARDING)
+  lifecycleStatus SchoolLifecycleStatus @default(ACTIVE)
   onboardingCompletedAt DateTime?
   document  String?      @unique
   email     String?
