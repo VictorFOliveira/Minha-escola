@@ -56,16 +56,30 @@ export function EnrollmentManager() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({
+    page: 1,
+    pageSize: 50,
+    total: 0,
+    pages: 1,
+  });
 
   async function load() {
     setLoading(true);
     setError("");
 
     try {
+      const query = new URLSearchParams({
+        page: String(page),
+        pageSize: "50",
+      });
+      if (search.trim()) query.set("search", search.trim());
+      if (yearFilter !== "all") query.set("schoolYear", yearFilter);
+
       const [enrollmentResponse, studentResponse, classResponse] = await Promise.all([
-        fetch("/api/enrollments", { cache: "no-store" }),
-        fetch("/api/students", { cache: "no-store" }),
-        fetch("/api/classes", { cache: "no-store" }),
+        fetch("/api/enrollments?" + query.toString(), { cache: "no-store" }),
+        fetch("/api/students?all=1", { cache: "no-store" }),
+        fetch("/api/classes?all=1", { cache: "no-store" }),
       ]);
 
       const [enrollmentData, studentData, classData] = await Promise.all([
@@ -80,6 +94,7 @@ export function EnrollmentManager() {
       }
 
       setEnrollments(enrollmentData.enrollments || []);
+      if (enrollmentData.meta) setMeta(enrollmentData.meta);
       if (studentResponse.ok) setStudents(studentData.students || []);
       if (classResponse.ok) setClasses(classData.classes || []);
     } catch {
@@ -90,28 +105,19 @@ export function EnrollmentManager() {
   }
 
   useEffect(() => {
-    void load();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [page, search, yearFilter]);
 
   const years = useMemo(
     () => Array.from(new Set(classes.map((item) => item.schoolYear))).sort((a, b) => b - a),
     [classes],
   );
 
-  const visible = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
-    return enrollments.filter((item) => {
-      const yearMatches = yearFilter === "all" || String(item.class.schoolYear) === yearFilter;
-      const queryMatches =
-        !query ||
-        item.student.name.toLowerCase().includes(query) ||
-        item.student.registration.toLowerCase().includes(query) ||
-        item.class.name.toLowerCase().includes(query);
-
-      return yearMatches && queryMatches;
-    });
-  }, [enrollments, yearFilter, search]);
+  const visible = useMemo(() => enrollments, [enrollments]);
 
   async function createEnrollment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -334,13 +340,51 @@ export function EnrollmentManager() {
         <div className="enrollment-toolbar">
           <div className="search-box">
             ⌕
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar aluno, matrícula ou turma..." />
+            <input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+              placeholder="Buscar aluno, matrícula ou turma..."
+            />
           </div>
-          <select value={yearFilter} onChange={(event) => setYearFilter(event.target.value)}>
+          <select
+            value={yearFilter}
+            onChange={(event) => {
+              setYearFilter(event.target.value);
+              setPage(1);
+            }}
+          >
             <option value="all">Todos os anos</option>
             {years.map((year) => <option key={year} value={year}>{year}</option>)}
           </select>
-          <span className="record-count">{visible.length} matrículas</span>
+          <span className="record-count">{meta.total} matrículas</span>
+          {meta.pages > 1 ? (
+            <div className="mini-actions">
+              <button
+                className="inline-action"
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+              >
+                Anterior
+              </button>
+              <span className="muted-small">
+                {meta.page}/{meta.pages}
+              </span>
+              <button
+                className="inline-action"
+                type="button"
+                disabled={page >= meta.pages}
+                onClick={() =>
+                  setPage((value) => Math.min(meta.pages, value + 1))
+                }
+              >
+                Próxima
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {loading ? (
