@@ -81,8 +81,8 @@ model User {
   role        UserRole
   active      Boolean  @default(true)
   lastLoginAt DateTime?
-  studentId   String?  @unique
-  student     Student? @relation("StudentPortalUser", fields: [studentId], references: [id], onDelete: SetNull)
+  enrollmentId String? @unique
+  enrollment   Enrollment? @relation("StudentPortalUser", fields: [enrollmentId], references: [id], onDelete: SetNull)
   guardianId  String?  @unique
   guardian    Guardian? @relation("GuardianPortalUser", fields: [guardianId], references: [id], onDelete: SetNull)
   teacherId   String?  @unique
@@ -123,7 +123,6 @@ model Student {
   attendances  Attendance[]
   grades       Grade[]
   charges      Charge[]
-  portalUser   User?        @relation("StudentPortalUser")
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -341,6 +340,7 @@ model Enrollment {
   previousEnrollmentId String?          @unique
   previousEnrollment   Enrollment?      @relation("EnrollmentHistory", fields: [previousEnrollmentId], references: [id], onDelete: SetNull)
   nextEnrollment       Enrollment?      @relation("EnrollmentHistory")
+  portalUser           User?             @relation("StudentPortalUser")
 
   @@unique([studentId, classId])
   @@index([classId, status])
