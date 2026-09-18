@@ -46,7 +46,8 @@ Durante esta rodada foram encontrados e corrigidos:
 9. callback de malware fora de ordem;
 10. webhook Asaas duplicado/fora de ordem;
 11. retorno `void` de advisory lock incompatível com desserialização do Prisma;
-12. asserção antiga do próprio teste de dashboard, que assumia um aluno fixo no top 4 e foi corrigida para validar o registro real mais recente do tenant.
+12. asserção antiga do próprio teste de dashboard, que assumia um aluno fixo no top 4 e foi corrigida para validar o registro real mais recente do tenant;
+13. cleanup do banco descartável do teste tentava apagar entidades auditáveis protegidas por `RESTRICT`; o cleanup foi ajustado para não gerar erro falso no log.
 
 ## Primeira rodada pesada
 
