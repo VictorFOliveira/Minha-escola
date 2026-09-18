@@ -44,24 +44,27 @@ export async function readIdempotency(
   }
 
   if (!record) {
-    try {
-      await prisma.idempotencyRecord.create({
-        data: {
+    const claimed = await prisma.idempotencyRecord.createMany({
+      data: [
+        {
           schoolId,
           operation,
           keyHash,
           responseStatus: null,
-          responseBody: undefined,
           resourceId: null,
           // Reserva curta enquanto a primeira requisição está executando.
           // saveIdempotency estende para 24 h ao persistir a resposta.
           expiresAt: new Date(Date.now() + 30 * 1000),
         },
-      });
+      ],
+      skipDuplicates: true,
+    });
+
+    if (claimed.count === 1) {
       return null;
-    } catch {
-      record = await prisma.idempotencyRecord.findUnique({ where });
     }
+
+    record = await prisma.idempotencyRecord.findUnique({ where });
   }
 
   if (
