@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { auditUserAction } from "@/lib/audit";
 import {
   buildSchoolDocument,
   type SchoolDocumentKind,
@@ -88,6 +89,15 @@ export async function POST(request: Request) {
         issuedBy: { select: { id: true, name: true, role: true } },
       },
     });
+
+    await auditUserAction({
+      schoolId: session.schoolId,
+      userId: session.id,
+      action: "DOCUMENT_ISSUE",
+      entityType: "SchoolDocument",
+      entityId: document.id,
+      metadata: { type: document.type, verificationCode: document.verificationCode },
+    }).catch(() => null);
 
     return NextResponse.json({ document }, { status: 201 });
   } catch (error) {
