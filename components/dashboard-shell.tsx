@@ -20,6 +20,7 @@ const navItems: Array<{
   { href: "/dashboard/boletins", label: "Boletins", icon: "▥", roles: ["ADMIN", "COORDINATOR", "TEACHER"] },
   { href: "/dashboard/diario", label: "Diário & Frequência", icon: "✓", roles: ["ADMIN", "COORDINATOR", "TEACHER"] },
   { href: "/dashboard/financeiro", label: "Financeiro", icon: "$", roles: ["ADMIN", "FINANCE"] },
+  { href: "/dashboard/comunicacao", label: "Comunicação", icon: "✉", roles: ["ADMIN", "COORDINATOR", "SECRETARY", "TEACHER", "FINANCE"] },
   { href: "/dashboard/usuarios", label: "Usuários", icon: "⚙", roles: ["ADMIN"] },
   { href: "/dashboard/escola", label: "Escola", icon: "⌂", roles: ["ADMIN"] },
 ];
