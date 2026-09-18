@@ -392,7 +392,6 @@ model Student {
   charges      Charge[]
   authorizationRequests AuthorizationRequest[]
   schoolDocuments SchoolDocument[]
-  privacyRequests DataPrivacyRequest[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -418,7 +417,6 @@ model Guardian {
   communicationRecipients CommunicationRecipient[]
   authorizationRequests AuthorizationRequest[]
   schoolDocuments SchoolDocument[]
-  privacyRequests DataPrivacyRequest[]
   portalUser User?        @relation("GuardianPortalUser")
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
