@@ -3,10 +3,6 @@ name: Bootstrap database artifacts
 on:
   push:
     branches: ["main"]
-    paths:
-      - "package.json"
-      - "prisma/schema.prisma"
-      - ".github/workflows/bootstrap-artifacts.yml"
   workflow_dispatch:
 
 permissions:
