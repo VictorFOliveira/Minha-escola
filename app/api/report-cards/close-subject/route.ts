@@ -54,8 +54,8 @@ export async function POST(request: Request) {
     );
   }
 
-  await prisma.$transaction(
-    calculated.map((item) => {
+  await prisma.$transaction([
+    ...calculated.map((item) => {
       if (!item) throw new Error("Resultado acadêmico inválido.");
 
       return prisma.subjectFinalResult.upsert({
@@ -87,7 +87,21 @@ export async function POST(request: Request) {
         },
       });
     }),
-  );
+    prisma.enrollmentAcademicResult.updateMany({
+      where: {
+        enrollmentId: {
+          in: calculated
+            .filter((item): item is NonNullable<typeof item> => Boolean(item))
+            .map((item) => item.enrollment.id),
+        },
+      },
+      data: {
+        status: "IN_PROGRESS",
+        closedAt: null,
+        closedByUserId: null,
+      },
+    }),
+  ]);
 
   return NextResponse.json({
     ok: true,
