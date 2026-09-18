@@ -9,55 +9,69 @@ export async function GET() {
     return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
   }
 
-  const charges = await prisma.charge.findMany({
-    where: {
-      schoolId: session.schoolId,
-      status: { notIn: ["CANCELLED", "REFUNDED"] },
-    },
-    select: {
-      amount: true,
-      paidAmount: true,
-      status: true,
-      dueDate: true,
-      guardianId: true,
-    },
-  });
+  const rows = await prisma.$queryRaw<
+    Array<{
+      totalReceived: unknown;
+      totalReceivable: unknown;
+      open: unknown;
+      overdue: unknown;
+      overdueGuardians: number;
+      charges: number;
+    }>
+  >`
+    SELECT
+      COALESCE(SUM("paidAmount"), 0) AS "totalReceived",
+      COALESCE(
+        SUM(GREATEST("amount" - "paidAmount", 0)),
+        0
+      ) AS "totalReceivable",
+      COALESCE(
+        SUM(
+          CASE
+            WHEN "dueDate" >= NOW()
+              AND "amount" - "paidAmount" > 0
+            THEN "amount" - "paidAmount"
+            ELSE 0
+          END
+        ),
+        0
+      ) AS "open",
+      COALESCE(
+        SUM(
+          CASE
+            WHEN "dueDate" < NOW()
+              AND "amount" - "paidAmount" > 0
+            THEN "amount" - "paidAmount"
+            ELSE 0
+          END
+        ),
+        0
+      ) AS "overdue",
+      COUNT(
+        DISTINCT CASE
+          WHEN "dueDate" < NOW()
+            AND "amount" - "paidAmount" > 0
+          THEN "guardianId"
+          ELSE NULL
+        END
+      )::int AS "overdueGuardians",
+      COUNT(*)::int AS "charges"
+    FROM "Charge"
+    WHERE
+      "schoolId" = ${session.schoolId}
+      AND "status" NOT IN ('CANCELLED', 'REFUNDED')
+  `;
 
-  const now = new Date();
-  let totalReceivable = 0;
-  let totalReceived = 0;
-  let overdue = 0;
-  let open = 0;
-  const overdueGuardians = new Set<string>();
-
-  for (const charge of charges) {
-    const amount = Number(charge.amount);
-    const paid = Number(charge.paidAmount);
-    totalReceived += paid;
-    const remaining = Math.max(0, amount - paid);
-    totalReceivable += remaining;
-
-    const isOverdue =
-      remaining > 0 &&
-      charge.status !== "REFUNDED" &&
-      charge.dueDate.getTime() < now.getTime();
-
-    if (isOverdue) {
-      overdue += remaining;
-      if (charge.guardianId) overdueGuardians.add(charge.guardianId);
-    } else if (remaining > 0) {
-      open += remaining;
-    }
-  }
+  const summary = rows[0];
 
   return NextResponse.json({
     summary: {
-      totalReceived,
-      totalReceivable,
-      open,
-      overdue,
-      overdueGuardians: overdueGuardians.size,
-      charges: charges.length,
+      totalReceived: Number(summary?.totalReceived || 0),
+      totalReceivable: Number(summary?.totalReceivable || 0),
+      open: Number(summary?.open || 0),
+      overdue: Number(summary?.overdue || 0),
+      overdueGuardians: summary?.overdueGuardians || 0,
+      charges: summary?.charges || 0,
     },
   });
 }
