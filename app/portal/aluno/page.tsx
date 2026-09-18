@@ -11,6 +11,23 @@ const weekdays: Record<number, string> = {
   7: "Domingo",
 };
 
+const assessmentTypeLabels: Record<string, string> = {
+  EXAM: "Prova",
+  QUIZ: "Quiz",
+  ASSIGNMENT: "Trabalho",
+  PROJECT: "Projeto",
+  PARTICIPATION: "Participação",
+  OTHER: "Outra",
+};
+
+const feedbackCategoryLabels: Record<string, string> = {
+  FORMATIVE: "Formativo",
+  ACADEMIC: "Acadêmico",
+  BEHAVIOR: "Comportamento",
+  SUPPORT: "Apoio",
+  GENERAL: "Geral",
+};
+
 export default async function StudentPortalPage() {
   const session = await requireRole(["STUDENT"]);
 
@@ -50,7 +67,7 @@ export default async function StudentPortalPage() {
     );
   }
 
-  const [periods, grades, attendance] = await Promise.all([
+  const [periods, assessments, attendance, feedbacks] = await Promise.all([
     prisma.academicPeriod.findMany({
       where: {
         schoolId: session.schoolId,
@@ -58,12 +75,30 @@ export default async function StudentPortalPage() {
       },
       orderBy: { order: "asc" },
     }),
-    prisma.grade.findMany({
+    prisma.assessment.findMany({
       where: {
-        studentId: enrollment.studentId,
-        classId: enrollment.classId,
+        status: { in: ["PUBLISHED", "CLOSED"] },
+        classSubject: {
+          classId: enrollment.classId,
+        },
       },
-      orderBy: [{ term: "asc" }, { subject: "asc" }],
+      orderBy: [
+        { period: { order: "asc" } },
+        { assessmentDate: "asc" },
+      ],
+      include: {
+        period: true,
+        classSubject: {
+          include: {
+            subject: true,
+            teacher: true,
+          },
+        },
+        scores: {
+          where: { enrollmentId: enrollment.id },
+          take: 1,
+        },
+      },
     }),
     prisma.attendance.findMany({
       where: {
@@ -71,6 +106,23 @@ export default async function StudentPortalPage() {
         classId: enrollment.classId,
       },
       select: { present: true },
+    }),
+    prisma.academicFeedback.findMany({
+      where: {
+        enrollmentId: enrollment.id,
+        schoolId: session.schoolId,
+        visibility: { in: ["STUDENT", "BOTH"] },
+        publishedAt: { not: null },
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        author: {
+          select: {
+            name: true,
+            role: true,
+          },
+        },
+      },
     }),
   ]);
 
@@ -97,11 +149,74 @@ export default async function StudentPortalPage() {
         : a.weekday - b.weekday,
     );
 
+  const performanceMap = new Map<
+    string,
+    {
+      subject: string;
+      period: string;
+      periodOrder: number;
+      weightedTotal: number;
+      weightTotal: number;
+      released: number;
+      total: number;
+    }
+  >();
+
+  for (const assessment of assessments) {
+    const key =
+      assessment.classSubject.subject.id + "::" + assessment.period.id;
+
+    if (!performanceMap.has(key)) {
+      performanceMap.set(key, {
+        subject: assessment.classSubject.subject.name,
+        period: assessment.period.name,
+        periodOrder: assessment.period.order,
+        weightedTotal: 0,
+        weightTotal: 0,
+        released: 0,
+        total: 0,
+      });
+    }
+
+    const row = performanceMap.get(key)!;
+    row.total += 1;
+
+    const score = assessment.scores[0];
+
+    if (score && score.score !== null && !score.absent) {
+      const numericScore = Number(score.score);
+      const maxScore = Number(assessment.maxScore);
+      const weight = Number(assessment.weight);
+
+      if (maxScore > 0 && weight > 0) {
+        row.weightedTotal += (numericScore / maxScore) * 10 * weight;
+        row.weightTotal += weight;
+        row.released += 1;
+      }
+    }
+  }
+
+  const performance = Array.from(performanceMap.values())
+    .map((row) => ({
+      ...row,
+      average:
+        row.weightTotal > 0
+          ? Math.round((row.weightedTotal / row.weightTotal) * 100) / 100
+          : null,
+    }))
+    .sort(
+      (a, b) =>
+        a.periodOrder - b.periodOrder ||
+        a.subject.localeCompare(b.subject),
+    );
+
   return (
     <div className="portal-container">
       <section className="student-hero">
         <div>
-          <span className="eyebrow">ANO LETIVO {enrollment.class.schoolYear}</span>
+          <span className="eyebrow">
+            ANO LETIVO {enrollment.class.schoolYear}
+          </span>
           <h1>Olá, {enrollment.student.name.split(" ")[0]} 👋</h1>
           <p>
             {enrollment.class.name} • {enrollment.class.gradeLevel} •{" "}
@@ -115,7 +230,9 @@ export default async function StudentPortalPage() {
               : "status-chip status-chip--warning"
           }
         >
-          {enrollment.status === "ACTIVE" ? "Matrícula ativa" : "Matrícula pendente"}
+          {enrollment.status === "ACTIVE"
+            ? "Matrícula ativa"
+            : "Matrícula pendente"}
         </span>
       </section>
 
@@ -132,13 +249,18 @@ export default async function StudentPortalPage() {
         </article>
         <article id="frequencia">
           <span>Frequência</span>
-          <strong>{attendanceRate === null ? "—" : attendanceRate + "%"}</strong>
+          <strong>
+            {attendanceRate === null ? "—" : attendanceRate + "%"}
+          </strong>
           <small>{attendance.length} chamada(s) lançada(s)</small>
         </article>
         <article>
-          <span>Períodos</span>
-          <strong>{periods.length}</strong>
-          <small>{periods.find((item) => item.status === "ACTIVE")?.name || "Nenhum período ativo"}</small>
+          <span>Avaliações publicadas</span>
+          <strong>{assessments.length}</strong>
+          <small>
+            {assessments.filter((item) => item.scores[0]?.score !== null).length}{" "}
+            com nota lançada
+          </small>
         </article>
       </section>
 
@@ -156,8 +278,13 @@ export default async function StudentPortalPage() {
               <article key={slot.id}>
                 <span>{weekdays[slot.weekday]}</span>
                 <strong>{slot.subject}</strong>
-                <p>{slot.startTime} – {slot.endTime}</p>
-                <small>{slot.teacher}{slot.room ? " • " + slot.room : ""}</small>
+                <p>
+                  {slot.startTime} – {slot.endTime}
+                </p>
+                <small>
+                  {slot.teacher}
+                  {slot.room ? " • " + slot.room : ""}
+                </small>
               </article>
             ))}
           </div>
@@ -175,6 +302,7 @@ export default async function StudentPortalPage() {
             <h2>Minha grade</h2>
           </div>
         </div>
+
         <div className="student-subject-grid">
           {enrollment.class.classSubjects.map((item) => (
             <article key={item.id}>
@@ -194,34 +322,123 @@ export default async function StudentPortalPage() {
         <div className="portal-panel-heading">
           <div>
             <span className="eyebrow">DESEMPENHO</span>
-            <h2>Notas lançadas</h2>
+            <h2>Médias parciais</h2>
           </div>
         </div>
 
-        {grades.length ? (
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Disciplina</th>
-                  <th>Período</th>
-                  <th>Nota</th>
-                </tr>
-              </thead>
-              <tbody>
-                {grades.map((grade) => (
-                  <tr key={grade.id}>
-                    <td><strong>{grade.subject}</strong></td>
-                    <td>{grade.term}</td>
-                    <td>{String(grade.value)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {performance.length ? (
+          <div className="performance-grid">
+            {performance.map((item) => (
+              <article
+                key={item.subject + item.period}
+                className="performance-card"
+              >
+                <span>{item.period}</span>
+                <strong>{item.subject}</strong>
+                <b>{item.average === null ? "—" : item.average.toFixed(2)}</b>
+                <small>
+                  {item.released}/{item.total} avaliação(ões) com nota
+                </small>
+              </article>
+            ))}
           </div>
         ) : (
           <div className="portal-empty">
-            Nenhuma nota foi lançada para esta matrícula ainda.
+            Ainda não há médias disponíveis para esta matrícula.
+          </div>
+        )}
+      </section>
+
+      <section className="portal-panel">
+        <div className="portal-panel-heading">
+          <div>
+            <span className="eyebrow">AVALIAÇÕES</span>
+            <h2>Provas e trabalhos</h2>
+          </div>
+        </div>
+
+        {assessments.length ? (
+          <div className="student-assessment-list">
+            {assessments.map((assessment) => {
+              const score = assessment.scores[0];
+
+              return (
+                <article key={assessment.id}>
+                  <div>
+                    <span className="type-chip">
+                      {assessmentTypeLabels[assessment.type] ||
+                        assessment.type}
+                    </span>
+                    <strong>{assessment.title}</strong>
+                    <small>
+                      {assessment.classSubject.subject.name} •{" "}
+                      {assessment.period.name} •{" "}
+                      {new Intl.DateTimeFormat("pt-BR").format(
+                        assessment.assessmentDate,
+                      )}
+                    </small>
+                  </div>
+                  <div className="student-assessment-score">
+                    <span>Nota</span>
+                    <strong>
+                      {score?.absent
+                        ? score.excused
+                          ? "Falta justificada"
+                          : "Faltou"
+                        : score?.score !== null &&
+                            score?.score !== undefined
+                          ? String(score.score) +
+                            " / " +
+                            String(assessment.maxScore)
+                          : "Aguardando"}
+                    </strong>
+                    {score?.feedback ? (
+                      <small>{score.feedback}</small>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="portal-empty">
+            Nenhuma avaliação foi publicada ainda.
+          </div>
+        )}
+      </section>
+
+      <section className="portal-panel">
+        <div className="portal-panel-heading">
+          <div>
+            <span className="eyebrow">ACOMPANHAMENTO</span>
+            <h2>Registros formativos</h2>
+          </div>
+        </div>
+
+        {feedbacks.length ? (
+          <div className="feedback-timeline">
+            {feedbacks.map((feedback) => (
+              <article key={feedback.id}>
+                <span>
+                  {feedbackCategoryLabels[feedback.category] ||
+                    feedback.category}
+                </span>
+                <div>
+                  <strong>{feedback.title}</strong>
+                  <p>{feedback.content}</p>
+                  <small>
+                    {feedback.author.name} •{" "}
+                    {new Intl.DateTimeFormat("pt-BR", {
+                      dateStyle: "short",
+                    }).format(feedback.createdAt)}
+                  </small>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="portal-empty">
+            Nenhum acompanhamento formativo foi publicado para você.
           </div>
         )}
       </section>
@@ -233,6 +450,7 @@ export default async function StudentPortalPage() {
             <h2>Períodos do ano</h2>
           </div>
         </div>
+
         <div className="student-period-list">
           {periods.map((period) => (
             <article key={period.id}>
@@ -244,7 +462,13 @@ export default async function StudentPortalPage() {
                   {new Intl.DateTimeFormat("pt-BR").format(period.endDate)}
                 </small>
               </div>
-              <b>{period.status === "ACTIVE" ? "Em andamento" : period.status === "CLOSED" ? "Encerrado" : "Planejado"}</b>
+              <b>
+                {period.status === "ACTIVE"
+                  ? "Em andamento"
+                  : period.status === "CLOSED"
+                    ? "Encerrado"
+                    : "Planejado"}
+              </b>
             </article>
           ))}
         </div>
