@@ -75,7 +75,7 @@ export default function HomePage() {
           {[
             ["01", "Alunos e responsáveis", "Cadastros reais, contatos, documentos e vínculos familiares."],
             ["02", "Professores e equipe", "Gestão de docentes, funcionários, funções e situação cadastral."],
-            ["03", "Turmas e frequência", "Organização acadêmica e acompanhamento diário."],
+            ["03", "Turmas e matrículas", "Turmas reais, vagas, matrícula, rematrícula e histórico por ano letivo."],
             ["04", "Financeiro", "Base para mensalidades, recebimentos e inadimplência."],
             ["05", "Acesso por perfil", "Administrador, secretaria, professor, financeiro e responsável."],
             ["06", "Multi-escola", "Arquitetura SaaS preparada para atender várias instituições."],
@@ -98,8 +98,9 @@ export default function HomePage() {
           <div className="check-list">
             <p><strong>Fase 1 concluída</strong><span>Fundação, dashboard, API e estrutura multi-escola.</span></p>
             <p><strong>Fase 2 concluída</strong><span>Login, sessões, recuperação e controle por perfil.</span></p>
-            <p><strong>Fase 3 em evolução</strong><span>Cadastros reais de pessoas e da instituição.</span></p>
-            <p><strong>Próximas fases</strong><span>Matrículas, acadêmico, financeiro completo, portal e documentos.</span></p>
+            <p><strong>Fase 3 concluída</strong><span>Cadastros reais de escola, alunos, responsáveis, professores e funcionários.</span></p>
+            <p><strong>Fase 4 concluída</strong><span>Turmas reais, matrículas, rematrículas, capacidade e histórico escolar.</span></p>
+            <p><strong>Próxima fase</strong><span>Estrutura acadêmica: disciplinas, grade curricular e períodos letivos.</span></p>
           </div>
         </div>
       </section>
