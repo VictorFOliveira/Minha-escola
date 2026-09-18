@@ -161,9 +161,9 @@ export async function notifyOverdueCharge(input: {
     guardianId: charge.guardian.id,
     title: "Mensalidade em atraso — " + charge.student.name,
     content:
-      "A cobrança "" +
+      'A cobrança "' +
       charge.description +
-      "" venceu em " +
+      '" venceu em ' +
       charge.dueDate.toLocaleDateString("pt-BR") +
       " e ainda possui saldo em aberto. Consulte o Portal do Responsável para regularização ou entre em contato com o financeiro da escola.",
     priority: "IMPORTANT",
@@ -194,9 +194,9 @@ export async function notifyDueSoonCharge(input: {
     guardianId: charge.guardian.id,
     title: "Mensalidade próxima do vencimento — " + charge.student.name,
     content:
-      "A cobrança "" +
+      'A cobrança "' +
       charge.description +
-      "" vence em " +
+      '" vence em ' +
       charge.dueDate.toLocaleDateString("pt-BR") +
       ". Consulte o Portal do Responsável para visualizar a cobrança e as formas de pagamento disponíveis.",
     priority: "NORMAL",
