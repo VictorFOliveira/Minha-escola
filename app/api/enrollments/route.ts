@@ -182,18 +182,99 @@ export async function POST(request: Request) {
   const status = body?.status === "PENDING" ? "PENDING" : "ACTIVE";
   let enrollment;
   try {
-    enrollment = await prisma.enrollment.create({
-      data: {
-        studentId,
-        classId,
-        type: "NEW",
-        status,
-        notes: body?.notes?.trim() || null,
-        startedAt,
-      },
-      include: { student: true, class: true },
+    enrollment = await prisma.$transaction(async (tx) => {
+      // Matrícula possui duas invariantes concorrentes:
+      // 1) capacidade da turma;
+      // 2) uma matrícula ativa/pendente por aluno no mesmo ano.
+      // Advisory locks mantêm essas verificações serializadas mesmo quando
+      // chegam requests diferentes no mesmo milissegundo.
+      await tx.$queryRaw`
+        SELECT pg_advisory_xact_lock(
+          hashtextextended(${"enrollment-class:" + session.schoolId + ":" + classId}, 0)
+        )
+      `;
+      await tx.$queryRaw`
+        SELECT pg_advisory_xact_lock(
+          hashtextextended(${"enrollment-student-year:" + session.schoolId + ":" + studentId + ":" + classGroup.schoolYear}, 0)
+        )
+      `;
+
+      const [currentOccupancy, duplicateInside, sameYearInside] =
+        await Promise.all([
+          tx.enrollment.count({
+            where: {
+              classId,
+              status: { in: ["ACTIVE", "PENDING"] },
+            },
+          }),
+          tx.enrollment.findUnique({
+            where: { studentId_classId: { studentId, classId } },
+          }),
+          tx.enrollment.findFirst({
+            where: {
+              studentId,
+              status: { in: ["ACTIVE", "PENDING"] },
+              class: {
+                schoolId: session.schoolId,
+                schoolYear: classGroup.schoolYear,
+              },
+            },
+            include: { class: true },
+          }),
+        ]);
+
+      if (
+        classGroup.capacity &&
+        currentOccupancy >= classGroup.capacity
+      ) {
+        throw new Error("ENROLLMENT_CLASS_FULL");
+      }
+
+      if (duplicateInside) {
+        throw new Error("ENROLLMENT_DUPLICATE");
+      }
+
+      if (sameYearInside) {
+        throw new Error("ENROLLMENT_SAME_YEAR");
+      }
+
+      return tx.enrollment.create({
+        data: {
+          studentId,
+          classId,
+          type: "NEW",
+          status,
+          notes: body?.notes?.trim() || null,
+          startedAt,
+        },
+        include: { student: true, class: true },
+      });
     });
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "ENROLLMENT_CLASS_FULL") {
+        return NextResponse.json(
+          { error: "A turma atingiu a capacidade cadastrada." },
+          { status: 409 },
+        );
+      }
+      if (error.message === "ENROLLMENT_DUPLICATE") {
+        return NextResponse.json(
+          { error: "O aluno já possui histórico nesta turma." },
+          { status: 409 },
+        );
+      }
+      if (error.message === "ENROLLMENT_SAME_YEAR") {
+        return NextResponse.json(
+          {
+            error:
+              "O aluno já possui matrícula ativa ou pendente neste ano letivo.",
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     if ((error as { code?: string })?.code === "P2002") {
       return NextResponse.json(
         { error: "A matrícula já foi criada por outra requisição." },
