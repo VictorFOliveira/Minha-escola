@@ -77,7 +77,7 @@ export default function HomePage() {
             ["02", "Professores e equipe", "Gestão de docentes, funcionários, funções e situação cadastral."],
             ["03", "Turmas e matrículas", "Turmas reais, vagas, matrícula, rematrícula e histórico por ano letivo."],
             ["04", "Financeiro", "Base para mensalidades, recebimentos e inadimplência."],
-            ["05", "Acesso por perfil", "Administrador, secretaria, professor, financeiro e responsável."],
+            ["05", "Acesso por perfil", "Administrador, coordenação, secretaria, professor, financeiro, aluno e responsável."],
             ["06", "Multi-escola", "Arquitetura SaaS preparada para atender várias instituições."],
           ].map(([number, title, description]) => (
             <article className="feature-card" key={title}>
@@ -100,7 +100,8 @@ export default function HomePage() {
             <p><strong>Fase 2 concluída</strong><span>Login, sessões, recuperação e controle por perfil.</span></p>
             <p><strong>Fase 3 concluída</strong><span>Cadastros reais de escola, alunos, responsáveis, professores e funcionários.</span></p>
             <p><strong>Fase 4 concluída</strong><span>Turmas reais, matrículas, rematrículas, capacidade e histórico escolar.</span></p>
-            <p><strong>Próxima fase</strong><span>Estrutura acadêmica: disciplinas, grade curricular e períodos letivos.</span></p>
+            <p><strong>Fase 5 concluída</strong><span>Disciplinas, períodos, grade curricular, horários, avaliações, notas e portal acadêmico do aluno.</span></p>
+            <p><strong>Próxima fase</strong><span>Frequência por disciplina e diário completo do professor.</span></p>
           </div>
         </div>
       </section>
