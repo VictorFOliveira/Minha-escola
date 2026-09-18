@@ -11,3 +11,6 @@ pnpm-debug.log*
 .DS_Store
 .vercel
 coverage
+.env.production
+.env.staging
+backups/
