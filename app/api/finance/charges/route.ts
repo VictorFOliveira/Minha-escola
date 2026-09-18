@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { getChargeStatus } from "@/lib/finance";
+import { paginationFromRequest, paginationMeta } from "@/lib/pagination";
 
 export async function GET(request: Request) {
   const session = await getSession();
@@ -13,43 +14,48 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const requestedStatus = url.searchParams.get("status");
   const studentId = url.searchParams.get("studentId");
-
-  const charges = await prisma.charge.findMany({
-    where: {
-      schoolId: session.schoolId,
-      ...(studentId ? { studentId } : {}),
-      ...(requestedStatus &&
-      ["PENDING", "PARTIAL", "PAID", "OVERDUE", "CANCELLED", "REFUNDED"].includes(requestedStatus)
-        ? { status: requestedStatus as any }
-        : {}),
-    },
-    orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-    include: {
-      student: true,
-      guardian: true,
-      enrollment: { include: { class: true } },
-      payments: { orderBy: { paidAt: "desc" } },
-    },
+  const pagination = paginationFromRequest(request, {
+    defaultPageSize: 50,
+    maxPageSize: 200,
+    maxAll: 5000,
   });
 
-  const updates = charges
-    .map((charge) => {
-      const next = getChargeStatus({
-        amount: Number(charge.amount),
-        paidAmount: Number(charge.paidAmount),
-        dueDate: charge.dueDate,
-        currentStatus: charge.status,
-      });
-      return next !== charge.status
-        ? prisma.charge.update({
-            where: { id: charge.id },
-            data: { status: next },
-          })
-        : null;
-    })
-    .filter(Boolean);
+  const where = {
+    schoolId: session.schoolId,
+    ...(studentId ? { studentId } : {}),
+    ...(requestedStatus &&
+    ["PENDING", "PARTIAL", "PAID", "OVERDUE", "CANCELLED", "REFUNDED"].includes(requestedStatus)
+      ? { status: requestedStatus as any }
+      : {}),
+    ...(pagination.search
+      ? {
+          OR: [
+            { description: { contains: pagination.search, mode: "insensitive" as const } },
+            { student: { name: { contains: pagination.search, mode: "insensitive" as const } } },
+            { guardian: { name: { contains: pagination.search, mode: "insensitive" as const } } },
+          ],
+        }
+      : {}),
+  };
 
-  if (updates.length) await prisma.$transaction(updates as any);
+  const [charges, total] = await Promise.all([
+    prisma.charge.findMany({
+      where,
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+      skip: pagination.skip,
+      take: pagination.take,
+      include: {
+        student: true,
+        guardian: true,
+        enrollment: { include: { class: true } },
+        payments: {
+          orderBy: { paidAt: "desc" },
+          take: 20,
+        },
+      },
+    }),
+    prisma.charge.count({ where }),
+  ]);
 
   return NextResponse.json({
     charges: charges.map((charge) => ({
@@ -61,5 +67,6 @@ export async function GET(request: Request) {
         currentStatus: charge.status,
       }),
     })),
+    meta: paginationMeta(total, pagination.page, pagination.pageSize),
   });
 }
