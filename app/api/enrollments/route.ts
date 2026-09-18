@@ -189,14 +189,20 @@ export async function POST(request: Request) {
       // Advisory locks mantêm essas verificações serializadas mesmo quando
       // chegam requests diferentes no mesmo milissegundo.
       await tx.$queryRaw`
-        SELECT pg_advisory_xact_lock(
-          hashtextextended(${"enrollment-class:" + session.schoolId + ":" + classId}, 0)
+        WITH advisory_lock AS (
+          SELECT pg_advisory_xact_lock(
+            hashtextextended(${"enrollment-class:" + session.schoolId + ":" + classId}, 0)
+          )
         )
+        SELECT 1::int AS "locked" FROM advisory_lock
       `;
       await tx.$queryRaw`
-        SELECT pg_advisory_xact_lock(
-          hashtextextended(${"enrollment-student-year:" + session.schoolId + ":" + studentId + ":" + classGroup.schoolYear}, 0)
+        WITH advisory_lock AS (
+          SELECT pg_advisory_xact_lock(
+            hashtextextended(${"enrollment-student-year:" + session.schoolId + ":" + studentId + ":" + classGroup.schoolYear}, 0)
+          )
         )
+        SELECT 1::int AS "locked" FROM advisory_lock
       `;
 
       const [currentOccupancy, duplicateInside, sameYearInside] =
