@@ -117,18 +117,72 @@ export async function POST(request: Request) {
     );
   }
 
-  const attachments = Array.isArray(body?.attachments)
-    ? body.attachments
-        .filter(
-          (item: any) =>
-            item &&
-            typeof item.name === "string" &&
-            item.name.trim() &&
-            typeof item.url === "string" &&
-            validUrl(item.url),
-        )
-        .slice(0, 10)
+  const rawAttachments = Array.isArray(body?.attachments)
+    ? body.attachments.slice(0, 10)
     : [];
+
+  const fileAssetIds = rawAttachments
+    .map((item: any) =>
+      typeof item?.fileAssetId === "string" ? item.fileAssetId : null,
+    )
+    .filter((value: string | null): value is string => Boolean(value));
+
+  const fileAssets = fileAssetIds.length
+    ? await prisma.fileAsset.findMany({
+        where: {
+          id: { in: fileAssetIds },
+          schoolId: session.schoolId,
+          status: "READY",
+        },
+        select: {
+          id: true,
+          originalName: true,
+          mimeType: true,
+        },
+      })
+    : [];
+
+  const fileAssetMap = new Map(fileAssets.map((item) => [item.id, item]));
+
+  const attachments = rawAttachments.flatMap((item: any) => {
+    if (!item || typeof item.name !== "string" || !item.name.trim()) {
+      return [];
+    }
+
+    if (
+      typeof item.fileAssetId === "string" &&
+      fileAssetMap.has(item.fileAssetId)
+    ) {
+      const asset = fileAssetMap.get(item.fileAssetId)!;
+      return [{
+        name: item.name.trim(),
+        fileAssetId: asset.id,
+        url: null,
+        mimeType: asset.mimeType,
+      }];
+    }
+
+    if (typeof item.url === "string" && validUrl(item.url)) {
+      return [{
+        name: item.name.trim(),
+        fileAssetId: null,
+        url: item.url.trim(),
+        mimeType:
+          typeof item.mimeType === "string" && item.mimeType.trim()
+            ? item.mimeType.trim()
+            : null,
+      }];
+    }
+
+    return [];
+  });
+
+  if (attachments.length !== rawAttachments.length) {
+    return NextResponse.json(
+      { error: "Um ou mais anexos são inválidos ou não pertencem a esta escola." },
+      { status: 400 },
+    );
+  }
 
   const communication = await prisma.communication.create({
     data: {
@@ -149,11 +203,12 @@ export async function POST(request: Request) {
         ? new Date(String(body.expiresAt) + "T23:59:59.000Z")
         : null,
       attachments: {
-        create: attachments.map((item: any) => ({
+        create: attachments.map((item) => ({
           schoolId: session.schoolId,
-          name: String(item.name).trim(),
-          url: String(item.url).trim(),
-          mimeType: item.mimeType ? String(item.mimeType).trim() : null,
+          name: item.name,
+          fileAssetId: item.fileAssetId,
+          url: item.url,
+          mimeType: item.mimeType,
         })),
       },
     },
