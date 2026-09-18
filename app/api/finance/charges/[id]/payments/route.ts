@@ -21,6 +21,13 @@ export async function POST(request: Request, context: Context) {
     return NextResponse.json({ error: "Cobrança não encontrada." }, { status: 404 });
   }
 
+  if (charge.provider === "ASAAS" && charge.externalId) {
+    return NextResponse.json(
+      { error: "Esta cobrança está ativa no Asaas. Aguarde a conciliação pelo webhook para evitar pagamento duplicado." },
+      { status: 409 },
+    );
+  }
+
   if (["CANCELLED", "REFUNDED"].includes(charge.status)) {
     return NextResponse.json(
       { error: "Esta cobrança não aceita novos pagamentos." },
