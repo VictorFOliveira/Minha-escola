@@ -154,6 +154,13 @@ export async function buildSubjectResult(input: {
         ? null
         : Number(existing.recoveryScore);
 
+  const manualFinalAverage =
+    input.manualFinalAverage !== undefined
+      ? input.manualFinalAverage
+      : existing?.finalAverage === null || existing?.finalAverage === undefined
+        ? null
+        : Number(existing.finalAverage);
+
   const finalAverage =
     annualAverage === null
       ? null
@@ -161,7 +168,7 @@ export async function buildSubjectResult(input: {
           annualAverage,
           recoveryScore,
           recoveryMode: policy.recoveryMode,
-          manualFinalAverage: input.manualFinalAverage,
+          manualFinalAverage,
         });
 
   const status = !allPeriodsClosed
