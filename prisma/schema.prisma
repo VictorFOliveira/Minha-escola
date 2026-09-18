@@ -158,6 +158,51 @@ enum EnrollmentResultStatus {
   FAILED
 }
 
+enum CommunicationAudience {
+  SCHOOL
+  STAFF
+  STUDENTS
+  GUARDIANS
+  FINANCIAL_GUARDIANS
+  CLASS_STUDENTS
+  CLASS_GUARDIANS
+  CLASS_BOTH
+  INDIVIDUAL_STUDENT
+  INDIVIDUAL_GUARDIAN
+}
+
+enum CommunicationPriority {
+  NORMAL
+  IMPORTANT
+  URGENT
+}
+
+enum CommunicationStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum DeliveryChannel {
+  PORTAL
+  EMAIL
+  WHATSAPP
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum AuthorizationStatus {
+  PENDING
+  APPROVED
+  DENIED
+  EXPIRED
+}
+
 model School {
   id        String       @id @default(cuid())
   name      String
@@ -183,6 +228,9 @@ model School {
   billingContracts BillingContract[]
   paymentCustomers PaymentCustomer[]
   financeSettings FinanceSettings?
+  communicationSettings CommunicationSettings?
+  communications Communication[]
+  communicationAttachments CommunicationAttachment[]
   charges   Charge[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -212,6 +260,8 @@ model User {
   subjectResultsClosed SubjectFinalResult[] @relation("SubjectResultClosedBy")
   enrollmentResultsClosed EnrollmentAcademicResult[] @relation("EnrollmentResultClosedBy")
   paymentsRecorded Payment[] @relation("PaymentRecordedBy")
+  communicationsAuthored Communication[] @relation("CommunicationAuthor")
+  communicationRecipients CommunicationRecipient[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -247,6 +297,7 @@ model Student {
   attendances  Attendance[]
   grades       Grade[]
   charges      Charge[]
+  authorizationRequests AuthorizationRequest[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -269,6 +320,8 @@ model Guardian {
   billingContracts BillingContract[]
   paymentCustomers PaymentCustomer[]
   charges Charge[]
+  communicationRecipients CommunicationRecipient[]
+  authorizationRequests AuthorizationRequest[]
   portalUser User?        @relation("GuardianPortalUser")
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -348,6 +401,7 @@ model ClassGroup {
   enrollments  Enrollment[]
   attendances  Attendance[]
   grades       Grade[]
+  targetedCommunications Communication[] @relation("TargetClass")
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -484,6 +538,8 @@ model Enrollment {
   academicResult       EnrollmentAcademicResult?
   billingContract      BillingContract?
   charges              Charge[]
+  communicationRecipients CommunicationRecipient[]
+  targetedCommunications Communication[] @relation("TargetEnrollment")
 
   @@unique([studentId, classId])
   @@index([classId, status])
@@ -707,6 +763,124 @@ model FinanceSettings {
   sendReportToGuardian   Boolean         @default(true)
   createdAt              DateTime        @default(now())
   updatedAt              DateTime        @updatedAt
+}
+
+
+model CommunicationSettings {
+  id               String @id @default(cuid())
+  schoolId         String @unique
+  school           School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  portalEnabled    Boolean @default(true)
+  emailEnabled     Boolean @default(false)
+  whatsappEnabled  Boolean @default(false)
+  emailProvider    String?
+  whatsappProvider String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Communication {
+  id                    String                @id @default(cuid())
+  schoolId              String
+  school                School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  authorUserId          String
+  author                User                  @relation("CommunicationAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  title                 String
+  content               String
+  priority              CommunicationPriority @default(NORMAL)
+  status                CommunicationStatus   @default(DRAFT)
+  audience              CommunicationAudience
+  targetClassId         String?
+  targetClass           ClassGroup?           @relation("TargetClass", fields: [targetClassId], references: [id], onDelete: SetNull)
+  targetEnrollmentId    String?
+  targetEnrollment      Enrollment?           @relation("TargetEnrollment", fields: [targetEnrollmentId], references: [id], onDelete: SetNull)
+  targetGuardianId      String?
+  requiresAcknowledgement Boolean             @default(false)
+  requiresAuthorization Boolean               @default(false)
+  publishAt             DateTime?
+  expiresAt             DateTime?
+  recipients            CommunicationRecipient[]
+  attachments           CommunicationAttachment[]
+  authorizationRequests AuthorizationRequest[]
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([schoolId, status, publishAt])
+  @@index([targetClassId])
+  @@index([targetEnrollmentId])
+  @@index([targetGuardianId])
+}
+
+model CommunicationRecipient {
+  id               String        @id @default(cuid())
+  communicationId  String
+  communication    Communication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  recipientKey     String
+  userId           String?
+  user             User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guardianId       String?
+  guardian         Guardian?     @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  enrollmentId     String?
+  enrollment       Enrollment?   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  readAt           DateTime?
+  acknowledgedAt   DateTime?
+  deliveries       CommunicationDelivery[]
+  createdAt        DateTime      @default(now())
+
+  @@unique([communicationId, recipientKey])
+  @@index([userId, readAt])
+  @@index([guardianId, readAt])
+  @@index([enrollmentId, readAt])
+}
+
+model CommunicationAttachment {
+  id              String        @id @default(cuid())
+  schoolId        String
+  school          School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  communicationId String
+  communication   Communication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  name            String
+  url             String
+  mimeType        String?
+  createdAt       DateTime      @default(now())
+
+  @@index([schoolId, communicationId])
+}
+
+model CommunicationDelivery {
+  id          String                 @id @default(cuid())
+  recipientId String
+  recipient   CommunicationRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  channel     DeliveryChannel
+  status      DeliveryStatus         @default(PENDING)
+  destination String?
+  providerId  String?
+  error       String?
+  sentAt      DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@unique([recipientId, channel])
+  @@index([channel, status])
+}
+
+model AuthorizationRequest {
+  id              String              @id @default(cuid())
+  communicationId String
+  communication   Communication       @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  guardianId      String
+  guardian        Guardian            @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  status          AuthorizationStatus @default(PENDING)
+  responseNote    String?
+  respondedAt     DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@unique([communicationId, studentId, guardianId])
+  @@index([guardianId, status])
+  @@index([studentId, status])
 }
 
 model BillingPlan {
