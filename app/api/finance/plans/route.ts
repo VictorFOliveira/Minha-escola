@@ -13,6 +13,7 @@ export async function GET() {
     where: { schoolId: session.schoolId },
     orderBy: [{ schoolYear: "desc" }, { name: "asc" }],
     include: { _count: { select: { contracts: true } } },
+    take: 500,
   });
 
   return NextResponse.json({ plans });
