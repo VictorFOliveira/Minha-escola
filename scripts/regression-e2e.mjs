@@ -119,6 +119,36 @@ async function main() {
     const me = await authed(secretaryCookie, "/api/auth/me");
     await expectStatus(me, 200, "authenticated session");
 
+    const bruteEmail = "brute-" + suffix + "@regression.invalid";
+    const bruteResults = await Promise.all(
+      Array.from({ length: 15 }, () =>
+        jsonRequest("/api/auth/login", {
+          method: "POST",
+          headers: { "X-Forwarded-For": "198.51.100.77" },
+          body: JSON.stringify({
+            email: bruteEmail,
+            password: "senha-incorreta",
+          }),
+        }),
+      ),
+    );
+    const bruteStatuses = bruteResults.map((item) => item.response.status);
+    assert.equal(
+      bruteStatuses.filter((status) => status === 401).length,
+      10,
+      "rate limit deve permitir somente as 10 primeiras tentativas da conta",
+    );
+    assert.equal(
+      bruteStatuses.filter((status) => status === 429).length,
+      5,
+      "rate limit deve bloquear a rajada após o limite da conta",
+    );
+    assert.equal(
+      bruteStatuses.some((status) => status >= 500),
+      false,
+      "rajada de login não pode gerar 5xx",
+    );
+
     const guardianKey = "reg-guardian-" + suffix;
     const guardianCreate = await authed(secretaryCookie, "/api/guardians", {
       method: "POST",
@@ -177,6 +207,64 @@ async function main() {
     });
     await expectStatus(studentReplay, 201, "student replay");
     assert.equal(studentReplay.data.student.id, studentData.student.id);
+
+    const invalidBirthDate = await authed(secretaryCookie, "/api/students", {
+      method: "POST",
+      body: JSON.stringify({
+        name: "Aluno Data Inválida",
+        registration: "BAD-DATE-" + suffix,
+        birthDate: "isto-nao-e-uma-data",
+      }),
+    });
+    await expectStatus(invalidBirthDate, 400, "invalid student birth date");
+
+    const oversizedKey = await authed(secretaryCookie, "/api/students", {
+      method: "POST",
+      headers: { "Idempotency-Key": "x".repeat(201) },
+      body: JSON.stringify({
+        name: "Aluno Chave Inválida",
+        registration: "BAD-KEY-" + suffix,
+      }),
+    });
+    await expectStatus(oversizedKey, 400, "oversized idempotency key");
+
+    const concurrentStudentKey = "race-student-" + suffix;
+    const concurrentStudentPayload = JSON.stringify({
+      name: "Aluno Concorrente",
+      registration: "RACE-" + suffix,
+      email: "race-student-" + suffix + "@example.invalid",
+    });
+    const concurrentStudents = await Promise.all(
+      Array.from({ length: 20 }, () =>
+        authed(secretaryCookie, "/api/students", {
+          method: "POST",
+          headers: { "Idempotency-Key": concurrentStudentKey },
+          body: concurrentStudentPayload,
+        }),
+      ),
+    );
+
+    for (const item of concurrentStudents) {
+      await expectStatus(item, 201, "concurrent idempotent student");
+    }
+
+    const concurrentStudentIds = new Set(
+      concurrentStudents.map((item) => item.data.student.id),
+    );
+    assert.equal(
+      concurrentStudentIds.size,
+      1,
+      "20 requests com a mesma chave devem produzir um único aluno",
+    );
+    assert.equal(
+      await prisma.student.count({
+        where: {
+          schoolId: schoolA.id,
+          registration: "RACE-" + suffix,
+        },
+      }),
+      1,
+    );
 
     const teacherKey = "reg-teacher-" + suffix;
     const teacherCreate = await authed(secretaryCookie, "/api/teachers", {
@@ -283,6 +371,77 @@ async function main() {
       enrollmentData.enrollment.id,
     );
 
+    const raceEnrollmentStudent = await prisma.student.create({
+      data: {
+        schoolId: schoolA.id,
+        name: "Aluno Matrícula Concorrente",
+        registration: "RACE-ENROLL-" + suffix,
+        status: "ACTIVE",
+      },
+    });
+    await prisma.studentGuardian.create({
+      data: {
+        studentId: raceEnrollmentStudent.id,
+        guardianId: guardianData.guardian.id,
+        relationship: "Responsável",
+        financialResponsible: true,
+        authorizedPickup: true,
+      },
+    });
+
+    const concurrentEnrollmentKey = "race-enrollment-" + suffix;
+    const concurrentEnrollments = await Promise.all(
+      Array.from({ length: 20 }, () =>
+        authed(secretaryCookie, "/api/enrollments", {
+          method: "POST",
+          headers: { "Idempotency-Key": concurrentEnrollmentKey },
+          body: JSON.stringify({
+            studentId: raceEnrollmentStudent.id,
+            classId: classData.class.id,
+            status: "ACTIVE",
+            startedAt: "2026-01-21",
+          }),
+        }),
+      ),
+    );
+    for (const item of concurrentEnrollments) {
+      await expectStatus(item, 201, "concurrent idempotent enrollment");
+    }
+    assert.equal(
+      new Set(
+        concurrentEnrollments.map((item) => item.data.enrollment.id),
+      ).size,
+      1,
+      "20 matrículas com a mesma chave devem produzir um único registro",
+    );
+    assert.equal(
+      await prisma.enrollment.count({
+        where: {
+          studentId: raceEnrollmentStudent.id,
+          classId: classData.class.id,
+        },
+      }),
+      1,
+    );
+
+    const invalidEnrollmentDate = await authed(
+      secretaryCookie,
+      "/api/enrollments",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          studentId: raceEnrollmentStudent.id,
+          classId: classData.class.id,
+          startedAt: "data-impossivel",
+        }),
+      },
+    );
+    await expectStatus(
+      invalidEnrollmentDate,
+      400,
+      "invalid enrollment start date",
+    );
+
     const foreignClass = await prisma.classGroup.create({
       data: {
         schoolId: schoolB.id,
@@ -373,7 +532,7 @@ async function main() {
         name: "Plano Regression " + suffix,
         schoolYear: 2026,
         installmentAmount: 100,
-        installments: 2,
+        installments: 3,
         dueDay: 10,
       }),
     });
@@ -394,34 +553,41 @@ async function main() {
     );
 
     const generateKey = "reg-generate-" + suffix;
-    const generate = await authed(
-      financeCookie,
-      "/api/finance/contracts/" + contractData.contract.id + "/generate",
-      {
-        method: "POST",
-        headers: { "Idempotency-Key": generateKey },
-      },
+    const concurrentGeneration = await Promise.all(
+      Array.from({ length: 12 }, () =>
+        authed(
+          financeCookie,
+          "/api/finance/contracts/" + contractData.contract.id + "/generate",
+          {
+            method: "POST",
+            headers: { "Idempotency-Key": generateKey },
+          },
+        ),
+      ),
     );
-    const generateData = await expectStatus(generate, 200, "charge generation");
-    assert.equal(generateData.created, 2);
-    assert.equal(generateData.charges.length, 2);
 
-    const generateReplay = await authed(
-      financeCookie,
-      "/api/finance/contracts/" + contractData.contract.id + "/generate",
-      {
-        method: "POST",
-        headers: { "Idempotency-Key": generateKey },
-      },
-    );
-    await expectStatus(generateReplay, 200, "charge generation replay");
+    for (const item of concurrentGeneration) {
+      await expectStatus(item, 200, "concurrent charge generation");
+    }
+
+    const generateData = concurrentGeneration[0].data;
+    assert.equal(generateData.created, 3);
+    assert.equal(generateData.charges.length, 3);
     assert.equal(
-      generateReplay.response.headers.get("idempotent-replay"),
-      "true",
+      new Set(
+        concurrentGeneration.map((item) =>
+          item.data.charges.map((charge) => charge.id).join(","),
+        ),
+      ).size,
+      1,
+      "geração concorrente com a mesma chave deve devolver o mesmo conjunto",
     );
     assert.equal(
-      generateReplay.data.charges[0].id,
-      generateData.charges[0].id,
+      await prisma.charge.count({
+        where: { contractId: contractData.contract.id },
+      }),
+      3,
+      "geração concorrente não pode duplicar mensalidades",
     );
 
     const chargeList = await authed(
@@ -467,6 +633,86 @@ async function main() {
     assert.equal(
       paymentReplay.data.payment.id,
       paymentData.payment.id,
+    );
+
+    const raceCharge = generateData.charges[1];
+    const doublePaymentResults = await Promise.all([
+      authed(
+        financeCookie,
+        "/api/finance/charges/" + raceCharge.id + "/payments",
+        {
+          method: "POST",
+          headers: { "Idempotency-Key": "double-a-" + suffix },
+          body: JSON.stringify({
+            amount: Number(raceCharge.amount),
+            method: "PIX",
+            paidAt: "2026-03-10",
+            note: "Corrida A",
+          }),
+        },
+      ),
+      authed(
+        financeCookie,
+        "/api/finance/charges/" + raceCharge.id + "/payments",
+        {
+          method: "POST",
+          headers: { "Idempotency-Key": "double-b-" + suffix },
+          body: JSON.stringify({
+            amount: Number(raceCharge.amount),
+            method: "PIX",
+            paidAt: "2026-03-10",
+            note: "Corrida B",
+          }),
+        },
+      ),
+    ]);
+
+    assert.deepEqual(
+      doublePaymentResults
+        .map((item) => item.response.status)
+        .sort((a, b) => a - b),
+      [201, 409],
+      "dois pagamentos integrais concorrentes devem aceitar apenas um",
+    );
+    assert.equal(
+      await prisma.payment.count({ where: { chargeId: raceCharge.id } }),
+      1,
+      "corrida de pagamento não pode criar duas baixas",
+    );
+
+    const sameKeyCharge = generateData.charges[2];
+    const samePaymentKey = "same-payment-" + suffix;
+    const sameKeyPayments = await Promise.all(
+      Array.from({ length: 12 }, () =>
+        authed(
+          financeCookie,
+          "/api/finance/charges/" + sameKeyCharge.id + "/payments",
+          {
+            method: "POST",
+            headers: { "Idempotency-Key": samePaymentKey },
+            body: JSON.stringify({
+              amount: Number(sameKeyCharge.amount),
+              method: "PIX",
+              paidAt: "2026-04-10",
+              note: "Mesmo pagamento concorrente",
+            }),
+          },
+        ),
+      ),
+    );
+    for (const item of sameKeyPayments) {
+      await expectStatus(item, 201, "concurrent same-key payment");
+    }
+    assert.equal(
+      new Set(sameKeyPayments.map((item) => item.data.payment.id)).size,
+      1,
+      "mesma chave deve devolver sempre o mesmo pagamento",
+    );
+    assert.equal(
+      await prisma.payment.count({
+        where: { chargeId: sameKeyCharge.id },
+      }),
+      1,
     );
 
     const documentKey = "reg-document-" + suffix;
@@ -552,6 +798,44 @@ async function main() {
     );
     assert.equal(classesPageData.classes.length, 1);
     assert.ok(classesPageData.meta.total >= 1);
+
+    const abusedPagination = await authed(
+      secretaryCookie,
+      "/api/students?page=-999&pageSize=999999",
+    );
+    const abusedPaginationData = await expectStatus(
+      abusedPagination,
+      200,
+      "pagination abuse",
+    );
+    assert.equal(abusedPaginationData.meta.page, 1);
+    assert.equal(abusedPaginationData.meta.pageSize, 100);
+
+    const forbiddenFlood = await Promise.all(
+      Array.from({ length: 30 }, () =>
+        authed(financeCookie, "/api/students?page=1&pageSize=1"),
+      ),
+    );
+    assert.equal(
+      forbiddenFlood.every((item) => item.response.status === 403),
+      true,
+      "perfil financeiro nunca pode ler cadastro de alunos",
+    );
+
+    const dashboard = await authed(secretaryCookie, "/dashboard");
+    assert.equal(dashboard.response.status, 200);
+    assert.equal(
+      typeof dashboard.data === "string" &&
+        dashboard.data.includes("842"),
+      false,
+      "dashboard não pode reintroduzir a métrica mock antiga",
+    );
+    assert.equal(
+      typeof dashboard.data === "string" &&
+        dashboard.data.includes("Aluno Regression"),
+      true,
+      "dashboard deve renderizar aluno real do tenant",
+    );
 
     const privacyExport = await authed(
       secretaryCookie,
