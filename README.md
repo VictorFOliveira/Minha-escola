@@ -1,96 +1,107 @@
 # Minha Escola
 
-Plataforma web de gestão escolar criada para centralizar a rotina administrativa, acadêmica e financeira de uma instituição de ensino.
+Plataforma web de gestão escolar para centralizar a rotina administrativa, acadêmica e financeira de uma instituição de ensino.
 
-## Estado atual
+## Status
 
-A Fase 1 já entrega:
-
+### Fase 1 — Fundação ✅
 - landing page responsiva;
 - dashboard administrativo;
-- módulo inicial de alunos;
-- módulo inicial de turmas;
-- acompanhamento de frequência;
-- visão financeira;
-- API de health check;
-- endpoint demonstrativo de alunos;
-- modelagem PostgreSQL com Prisma;
+- módulos demonstrativos de alunos, turmas, frequência e financeiro;
+- API inicial;
+- PostgreSQL + Prisma;
 - estrutura multi-escola;
-- CI com typecheck e build.
+- GitHub Actions.
+
+### Fase 2 — Autenticação e perfis ✅
+- login e logout;
+- sessão assinada em cookie HttpOnly;
+- validação do usuário ativo no banco;
+- hash de senha com bcrypt;
+- perfis ADMIN, SECRETARY, TEACHER, FINANCE e GUARDIAN;
+- menu e rotas protegidos por perfil;
+- dashboard limitado conforme o perfil;
+- gestão de usuários pelo administrador;
+- ativação e desativação de contas;
+- alteração de perfil;
+- recuperação de senha com token aleatório armazenado em hash e expiração de 30 minutos;
+- seed do primeiro administrador;
+- endpoint de alunos protegido.
+
+O fluxo de recuperação funciona em desenvolvimento mostrando o link diretamente. Para produção ainda será necessário conectar um provedor de e-mail para entregar esse link ao usuário.
 
 ## Stack
 
-- Next.js
-- React
+- Next.js 15
+- React 19
 - TypeScript
 - PostgreSQL
 - Prisma
+- bcryptjs
+- jose
 - GitHub Actions
 
-## Rodando localmente
+## Configuração local
 
 ~~~bash
 npm install
 cp .env.example .env
-npm run db:generate
-npm run dev
 ~~~
 
-A aplicação abre em `http://localhost:3000`.
-
-## Banco de dados
-
-Configure `DATABASE_URL` no arquivo `.env`.
-
-Exemplo:
-
-~~~env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/minha_escola?schema=public"
-~~~
+Configure DATABASE_URL, AUTH_SECRET, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD e SEED_SCHOOL_NAME no arquivo .env.
 
 Depois execute:
 
 ~~~bash
+npm run db:generate
 npm run db:push
+npm run db:seed
+npm run dev
 ~~~
 
-## Rotas iniciais
+Acesse http://localhost:3000/login.
 
-- `/` — site institucional
-- `/dashboard` — painel
-- `/dashboard/alunos`
-- `/dashboard/turmas`
-- `/dashboard/frequencia`
-- `/dashboard/financeiro`
-- `/api/health`
-- `/api/students`
+## Perfis
 
-## Roadmap
+| Perfil | Acesso inicial |
+| --- | --- |
+| ADMIN | Todos os módulos e administração de usuários |
+| SECRETARY | Alunos, turmas e frequência |
+| TEACHER | Turmas e frequência |
+| FINANCE | Financeiro |
+| GUARDIAN | Login isolado; portal do responsável será conectado em fase posterior |
 
-### Fase 2 — operação real
-- autenticação e perfis de acesso;
-- CRUD de escola, alunos, professores e responsáveis;
-- persistência real em PostgreSQL;
-- matrículas e rematrículas;
-- disciplinas e grade curricular.
+A autorização acontece no servidor. Ocultar o item do menu não é usado como mecanismo de segurança.
 
-### Fase 3 — acadêmico
-- chamada pelo professor;
-- notas e avaliações;
-- boletim;
-- ocorrências;
-- calendário letivo.
+## Rotas principais
 
-### Fase 4 — financeiro e comunicação
-- PIX e boleto;
-- conciliação;
-- inadimplência;
-- notificações;
-- portal do responsável.
+- / — site institucional
+- /login — autenticação
+- /forgot-password — solicitação de recuperação
+- /reset-password — definição de nova senha
+- /dashboard — painel autenticado
+- /dashboard/alunos
+- /dashboard/turmas
+- /dashboard/frequencia
+- /dashboard/financeiro
+- /dashboard/usuarios — somente ADMIN
+- /api/auth/login
+- /api/auth/logout
+- /api/auth/me
+- /api/auth/forgot-password
+- /api/auth/reset-password
+- /api/users — somente ADMIN
+- /api/students — ADMIN e SECRETARY
+- /api/health
 
-### Fase 5 — expansão
-- app/PWA do professor e responsável;
-- relatórios;
-- exportações;
-- auditoria;
-- multiunidade avançada.
+## Próximas fases
+
+3. Cadastros principais reais: escola, alunos, responsáveis, professores e funcionários.
+4. Matrículas e rematrículas.
+5. Estrutura acadêmica: disciplinas, grade curricular e períodos.
+6. Frequência e diário do professor.
+7. Notas, avaliações e boletins.
+8. Financeiro completo e pagamentos.
+9. Portal do responsável e comunicação.
+10. Secretaria e documentos oficiais.
+11. SaaS, produção, assinaturas e superadmin.
