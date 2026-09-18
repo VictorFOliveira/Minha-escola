@@ -47,10 +47,19 @@ export async function GET(_: Request, context: Context) {
         include: {
           student: true,
           periodGrades: {
+            where:
+              session.role === "TEACHER" && session.teacherId
+                ? { classSubject: { teacherId: session.teacherId } }
+                : undefined,
             include: { period: true },
           },
-          subjectResults: true,
-          academicResult: true,
+          subjectResults: {
+            where:
+              session.role === "TEACHER" && session.teacherId
+                ? { classSubject: { teacherId: session.teacherId } }
+                : undefined,
+          },
+          academicResult: session.role !== "TEACHER",
         },
       },
     },
