@@ -285,6 +285,35 @@ enum BillingInterval {
   ANNUAL
 }
 
+enum MalwareScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+  FAILED
+  SKIPPED
+}
+
+enum SecurityEventSeverity {
+  INFO
+  WARN
+  CRITICAL
+}
+
+enum ImportJobType {
+  STUDENTS
+  GUARDIANS
+  TEACHERS
+  CLASSES
+  ENROLLMENTS
+}
+
+enum ImportJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 model School {
   id        String       @id @default(cuid())
   name      String
@@ -323,6 +352,11 @@ model School {
   fileAssets FileAsset[]
   privacySettings PrivacySettings?
   privacyRequests DataPrivacyRequest[]
+  securityEvents SecurityEvent[]
+  apiCredentials ApiCredential[]
+  outgoingWebhooks OutgoingWebhook[]
+  importJobs ImportJob[]
+  idempotencyRecords IdempotencyRecord[]
   charges   Charge[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -360,6 +394,15 @@ model User {
   privacyRequests DataPrivacyRequest[] @relation("PrivacyRequestedBy")
   privacyRequestsProcessed DataPrivacyRequest[] @relation("PrivacyProcessedBy")
   consents ConsentRecord[]
+  sessions UserSession[]
+  securityEvents SecurityEvent[]
+  apiCredentialsCreated ApiCredential[]
+  outgoingWebhooksCreated OutgoingWebhook[]
+  importJobsCreated ImportJob[]
+  mfaEnabled Boolean @default(false)
+  mfaSecretEncrypted String?
+  mfaRecoveryCodeHashes Json?
+  mfaEnabledAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -1050,6 +1093,13 @@ model PlatformAdmin {
   active      Boolean    @default(true)
   lastLoginAt DateTime?
   auditLogs   AuditLog[]
+  sessions PlatformSession[]
+  securityEvents SecurityEvent[]
+  impersonatedSessions UserSession[] @relation("SupportImpersonation")
+  mfaEnabled Boolean @default(false)
+  mfaSecretEncrypted String?
+  mfaRecoveryCodeHashes Json?
+  mfaEnabledAt DateTime?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 }
@@ -1129,6 +1179,10 @@ model FileAsset {
   sizeBytes       Int
   status          FileAssetStatus @default(PENDING)
   sha256          String?
+  scanStatus       MalwareScanStatus @default(PENDING)
+  scanProvider     String?
+  scanResult       String?
+  scannedAt        DateTime?
   attachments     CommunicationAttachment[]
   createdAt       DateTime        @default(now())
   readyAt         DateTime?
@@ -1234,6 +1288,157 @@ model SecurityThrottle {
 
   @@unique([action, keyHash])
   @@index([blockedUntil])
+}
+
+
+model UserSession {
+  id                          String         @id @default(cuid())
+  userId                      String
+  user                        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt                   DateTime
+  lastSeenAt                  DateTime       @default(now())
+  revokedAt                   DateTime?
+  userAgent                   String?
+  ipHash                      String?
+  mfaVerified                 Boolean        @default(false)
+  impersonatedByPlatformAdminId String?
+  impersonatedByPlatformAdmin PlatformAdmin? @relation("SupportImpersonation", fields: [impersonatedByPlatformAdminId], references: [id], onDelete: SetNull)
+  supportReason               String?
+  createdAt                   DateTime       @default(now())
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([impersonatedByPlatformAdminId])
+}
+
+model PlatformSession {
+  id              String        @id @default(cuid())
+  platformAdminId String
+  platformAdmin   PlatformAdmin @relation(fields: [platformAdminId], references: [id], onDelete: Cascade)
+  expiresAt       DateTime
+  lastSeenAt      DateTime      @default(now())
+  revokedAt       DateTime?
+  userAgent       String?
+  ipHash          String?
+  mfaVerified     Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+
+  @@index([platformAdminId, revokedAt, expiresAt])
+}
+
+model SecurityEvent {
+  id              String                @id @default(cuid())
+  schoolId        String?
+  school          School?               @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  userId          String?
+  user            User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  platformAdminId String?
+  platformAdmin   PlatformAdmin?        @relation(fields: [platformAdminId], references: [id], onDelete: SetNull)
+  eventType       String
+  severity        SecurityEventSeverity @default(INFO)
+  requestId       String?
+  ipHash          String?
+  userAgent       String?
+  metadata        Json?
+  createdAt       DateTime              @default(now())
+
+  @@index([schoolId, createdAt])
+  @@index([userId, createdAt])
+  @@index([platformAdminId, createdAt])
+  @@index([eventType, severity, createdAt])
+}
+
+model ApiCredential {
+  id              String   @id @default(cuid())
+  schoolId        String
+  school          School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  createdBy       User     @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  name            String
+  keyPrefix       String
+  secretHash      String   @unique
+  scopes          String[]
+  active          Boolean  @default(true)
+  lastUsedAt      DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([schoolId, active])
+  @@index([keyPrefix])
+}
+
+model OutgoingWebhook {
+  id              String   @id @default(cuid())
+  schoolId        String
+  school          School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  createdBy       User     @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  name            String
+  url             String
+  secretEncrypted String
+  events          String[]
+  active          Boolean  @default(true)
+  deliveries      OutgoingWebhookDelivery[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([schoolId, active])
+}
+
+model OutgoingWebhookDelivery {
+  id          String          @id @default(cuid())
+  webhookId   String
+  webhook     OutgoingWebhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  eventId     String
+  eventType   String
+  payload     Json
+  status      DeliveryStatus  @default(PENDING)
+  attempts    Int             @default(0)
+  nextAttemptAt DateTime?
+  sentAt      DateTime?
+  responseCode Int?
+  error       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([webhookId, eventId])
+  @@index([status, nextAttemptAt])
+}
+
+model IdempotencyRecord {
+  id             String   @id @default(cuid())
+  schoolId       String
+  school         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  operation      String
+  keyHash        String
+  responseStatus Int?
+  responseBody   Json?
+  resourceId     String?
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  @@unique([schoolId, operation, keyHash])
+  @@index([expiresAt])
+}
+
+model ImportJob {
+  id              String          @id @default(cuid())
+  schoolId        String
+  school          School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  createdByUserId String
+  createdBy       User            @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  type            ImportJobType
+  status          ImportJobStatus @default(PENDING)
+  sourceName      String
+  totalRows       Int             @default(0)
+  processedRows   Int             @default(0)
+  successRows     Int             @default(0)
+  failedRows      Int             @default(0)
+  errors          Json?
+  createdAt       DateTime        @default(now())
+  completedAt     DateTime?
+
+  @@index([schoolId, status, createdAt])
 }
 
 model BillingPlan {
