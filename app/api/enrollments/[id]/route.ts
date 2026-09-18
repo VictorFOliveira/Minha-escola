@@ -15,6 +15,9 @@ export async function PATCH(request: Request, context: Context) {
       id,
       class: { schoolId: session.schoolId },
     },
+    include: {
+      class: true,
+    },
   });
   if (!current) return NextResponse.json({ error: "Matrícula não encontrada." }, { status: 404 });
 
@@ -26,6 +29,45 @@ export async function PATCH(request: Request, context: Context) {
     if (!allowedStatuses.includes(body.status)) {
       return NextResponse.json({ error: "Status inválido." }, { status: 400 });
     }
+
+    if (["ACTIVE", "PENDING"].includes(body.status)) {
+      const [sameYear, occupiedSeats] = await Promise.all([
+        prisma.enrollment.findFirst({
+          where: {
+            id: { not: current.id },
+            studentId: current.studentId,
+            status: { in: ["ACTIVE", "PENDING"] },
+            class: {
+              schoolId: session.schoolId,
+              schoolYear: current.class.schoolYear,
+            },
+          },
+          include: { class: true },
+        }),
+        prisma.enrollment.count({
+          where: {
+            id: { not: current.id },
+            classId: current.classId,
+            status: { in: ["ACTIVE", "PENDING"] },
+          },
+        }),
+      ]);
+
+      if (sameYear) {
+        return NextResponse.json(
+          { error: "O aluno já possui matrícula ativa ou pendente em " + sameYear.class.name + " no mesmo ano letivo." },
+          { status: 409 },
+        );
+      }
+
+      if (current.class.capacity && occupiedSeats >= current.class.capacity) {
+        return NextResponse.json(
+          { error: "A turma atingiu a capacidade cadastrada." },
+          { status: 409 },
+        );
+      }
+    }
+
     data.status = body.status;
     data.endedAt = ["TRANSFERRED", "CANCELLED"].includes(body.status)
       ? new Date()
