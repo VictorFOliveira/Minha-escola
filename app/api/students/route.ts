@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { assertStudentLimit } from "@/lib/tenant-limits";
 
 const allowedRoles = ["ADMIN", "SECRETARY"];
 
@@ -31,6 +32,15 @@ export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   if (!allowedRoles.includes(session.role)) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
+
+  try {
+    await assertStudentLimit(session.schoolId);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Limite do plano atingido." },
+      { status: 409 },
+    );
+  }
 
   const body = await request.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
