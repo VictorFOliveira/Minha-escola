@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { CommunicationInbox } from "@/components/communication-inbox";
 import { PortalDocuments } from "@/components/portal-documents";
+import { PrivacyPortal } from "@/components/privacy-portal";
 
 const resultLabels: Record<string, string> = {
   IN_PROGRESS: "Em andamento",
@@ -115,6 +116,7 @@ export default async function GuardianPortalPage() {
 
       <CommunicationInbox title="Comunicados e autorizações" />
       <PortalDocuments />
+      <PrivacyPortal />
 
       <section className="guardian-student-grid">
         {guardian.students.map((link) => {
