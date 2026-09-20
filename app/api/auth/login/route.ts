@@ -11,6 +11,7 @@ import {
 } from "@/lib/rate-limit";
 import { createMfaChallenge } from "@/lib/mfa";
 import { recordUserSecurityEvent } from "@/lib/security-events";
+import { assertRequestSchoolHost } from "@/lib/tenant-domain";
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
@@ -71,6 +72,10 @@ export async function POST(request: Request) {
   });
 
   if (!user || !user.active || !isAppRole(user.role)) {
+    return NextResponse.json({ error: "E-mail ou senha inválidos." }, { status: 401 });
+  }
+
+  if (!(await assertRequestSchoolHost(request, user.schoolId))) {
     return NextResponse.json({ error: "E-mail ou senha inválidos." }, { status: 401 });
   }
 
