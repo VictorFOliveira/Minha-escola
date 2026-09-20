@@ -1,9 +1,10 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { jwtVerify, SignJWT } from "jose";
 import { isAppRole, type AppRole } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { requestSecurityContext } from "@/lib/security-events";
+import { schoolIdForHost } from "@/lib/tenant-domain";
 
 export const SESSION_COOKIE = "minha_escola_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 8;
@@ -187,6 +188,12 @@ export async function getSession(): Promise<SessionPayload | null> {
 
     const user = stored.user;
     if (!user.active || !isAppRole(user.role)) return null;
+
+    const requestHeaders = await headers();
+    const requestHost =
+      requestHeaders.get("x-forwarded-host") || requestHeaders.get("host");
+    const hostSchoolId = await schoolIdForHost(requestHost);
+    if (hostSchoolId && hostSchoolId !== user.schoolId) return null;
 
     if (
       ["SUSPENDED", "CANCELLED"].includes(user.school.lifecycleStatus) ||
