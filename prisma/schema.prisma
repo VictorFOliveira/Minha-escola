@@ -359,6 +359,7 @@ model School {
   privacySettings PrivacySettings?
   privacyRequests DataPrivacyRequest[]
   securityEvents SecurityEvent[]
+  domains   SchoolDomain[]
   apiCredentials ApiCredential[]
   outgoingWebhooks OutgoingWebhook[]
   importJobs ImportJob[]
@@ -1617,4 +1618,22 @@ model PaymentWebhookEvent {
 
   @@unique([provider, eventId])
   @@index([provider, eventType, createdAt])
+}
+
+
+model SchoolDomain {
+  id                String   @id @default(cuid())
+  schoolId          String
+  school            School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  domain            String   @unique
+  type              String
+  verified          Boolean  @default(false)
+  isPrimary         Boolean  @default(false)
+  verificationToken String?
+  verifiedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([schoolId, type, verified])
+  @@index([schoolId, isPrimary])
 }
