@@ -1,6 +1,6 @@
 # Minha Escola
 
-Plataforma SaaS multi-tenant de gestão escolar para centralizar operação administrativa, acadêmica, financeira, comunicação, documentos e portais de alunos/responsáveis.
+Plataforma SaaS multi-tenant de gestão escolar para centralizar operação administrativa, acadêmica, financeira, comunicação, documentos e portais de alunos/responsáveis. Cada escola pode operar em subdomínio Cactus ou domínio próprio verificado.
 
 ## Status
 
@@ -333,3 +333,8 @@ O pacote técnico passou pelos gates de migrations, testes, build, regressão HT
 O estado atual é **pronto para homologação final**. O go-live depende apenas da validação no ambiente real: VPS/containers, domínio/DNS, PostgreSQL, bucket/scanner, secrets, jobs, monitoramento, backup e novo teste de carga na infraestrutura escolhida.
 
 Veja [Pendências conhecidas](docs/KNOWN_GAPS.md) para o checklist operacional restante.
+
+
+## Domínios por escola
+
+Subdomínio Cactus, domínio próprio com validação CNAME e vínculo Host → tenant estão documentados em [docs/DOMAINS.md](docs/DOMAINS.md).
