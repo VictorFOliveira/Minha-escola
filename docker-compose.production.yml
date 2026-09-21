@@ -50,6 +50,8 @@ services:
       HOSTNAME: "0.0.0.0"
     expose:
       - "3000"
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8084}:3000"
     networks:
       - backend
       - edge
@@ -70,6 +72,7 @@ services:
       - no-new-privileges:true
 
   caddy:
+    profiles: ["standalone-edge"]
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
