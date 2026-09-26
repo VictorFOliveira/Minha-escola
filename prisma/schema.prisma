@@ -1637,3 +1637,14 @@ model SchoolDomain {
   @@index([schoolId, type, verified])
   @@index([schoolId, isPrimary])
 }
+
+
+model PlatformControlPlaneCredential {
+  id        Int      @id
+  keyHash   String   @map("key_hash")
+  active    Boolean  @default(true)
+  pairedAt  DateTime @default(now()) @map("paired_at")
+  rotatedAt DateTime? @map("rotated_at")
+
+  @@map("platform_control_plane_credentials")
+}
